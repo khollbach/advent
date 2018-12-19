@@ -18,5 +18,22 @@ print(sum(map(lambda x: 1, filter(lambda s: has_char_with_freq(2, s), ids)))
 
 # Part 2
 
-print('TODO')
-assert False
+# Two strings are similar if they differ in exactly one column.
+def similar(x, y):
+    if len(x) != len(y):
+        return False
+    differences = 0
+    for i, c in enumerate(x):
+        if c != y[i]:
+            if differences > 0:
+                return False
+            differences += 1
+    return differences == 1
+
+for x in ids:
+    for y in ids:
+        if similar(x, y):
+            print(x)
+            print(y)
+            import sys
+            sys.exit()
