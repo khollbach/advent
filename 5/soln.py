@@ -1,11 +1,5 @@
 #!/usr/bin/python3
 
-import re
-import sys
-
-from collections import namedtuple
-from enum import Enum, auto
-
 def main():
     # e.g., s == "TCZOXuUEebQgFfGTscCSt"
     s = open('input').read().strip()
