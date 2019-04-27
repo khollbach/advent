@@ -1,3 +1,0 @@
-Just need to find the 'color' of tiles as far as the border; it's enough to
-predict the remaining infinite space. Then, you just need to get the largest
-'area' that doesn't extend to the border.
