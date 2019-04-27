@@ -1,1 +1,3 @@
-Can store a grid with 'one pixel' border compared to furthest point in each direction. This is because finding out the 'color' of the border is enough to predict the remaining infinite space. Then, you just need to get the largest 'area' that doesn't extend to the border.
+Just need to find the 'color' of tiles as far as the border; it's enough to
+predict the remaining infinite space. Then, you just need to get the largest
+'area' that doesn't extend to the border.
