@@ -36,19 +36,22 @@ object Solution {
    * Return their common subsequence. None if no such pair is found.
    */
   def findMatch(ids: Seq[String]): Option[String] = {
-    // TODO: how to make this not include (x, x) and (y, x) for every (x, y)?
-    // TODO: how to make this lazy?
     val pairs = for (id1 <- ids; id2 <- ids) yield (id1, id2)
 
-    // val pairs = ???
+    // TODO: how to make pairs not include (x, x) and (y, x) for every (x, y)?
+    // TODO: how to make pairs lazy?
+    //val pairs = ???
 
+    // This works, but doesn't stop early.
     //pairs.flatMap {
       //case (id1, id2) => isMatch(id1, id2)
     //}.headOption
 
-    // "Lazy" version of the above.
+    // Early-stopping version of the above.
     pairs.collectFirst {
-      Function.unlift(pair => isMatch(pair._1, pair._2))
+      Function.unlift {
+        case (id1, id2) => isMatch(id1, id2)
+      }
     }
   }
 

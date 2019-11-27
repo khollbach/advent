@@ -3,63 +3,86 @@
 
 import scala.io.Source
 
-case class Claim(
-  id: Int,
+case class Point(
   x: Int,
   y: Int,
+)
+
+case class Claim(
+  id: Int,
+  topLeft: Point,
   width: Int,
   height: Int
 ) {
-  def rightEdge: Int = x + width
-  def bottomEdge: Int = y + height
+  def bottomRight: Point =
+    Point(topLeft.x + width, topLeft.y + height)
 }
 
 object Solution {
   def main(args: Array[String]): Unit = {
     val lines = Source.fromFile("input").getLines
-
     val claims = parseClaims(lines.toSeq)
 
     println(part1(claims))
-
     println(part2(claims))
   }
 
   def parseClaims(lines: Seq[String]): Seq[Claim] = {
-    val regex = {
-      val g = raw"(\d+)"
-      raw"#$g @ $g,$g: ${g}x$g".r
-    }
+    val regex = raw"#(\d+) @ (\d+),(\d+): (\d+)x(\d+)".r
 
     lines.map {
       case regex(id, x, y, width, height) =>
-        Claim(id.toInt, x.toInt, y.toInt, width.toInt, height.toInt)
+        Claim(id.toInt, Point(x.toInt, y.toInt), width.toInt, height.toInt)
     }
   }
 
   def part1(claims: Seq[Claim]): Int = {
-    assert(claims.forall(_.x >= 0))
-    assert(claims.forall(_.y >= 0))
+    assert(claims.forall(_.topLeft.x >= 0))
+    assert(claims.forall(_.topLeft.y >= 0))
 
-    val xMax = claims.map(_.rightEdge).max
-    val yMax = claims.map(_.bottomEdge).max
+    val claimsPerSquare = numClaimsPerSquare(claims)
 
-    val freqs = Array.fill(xMax, yMax)(0)
-
-    claims.foreach { claim =>
-      for (x <- claim.x until claim.rightEdge;
-        y <- claim.y until claim.bottomEdge) {
-          freqs(x)(y) += 1
-      }
-    }
-
-    freqs.map { row =>
+    // todo: is there a way to flatten claimsPerSquare first?
+    // E.g.: claimsPerSquare.flatten.count(_ >= 2)
+    claimsPerSquare.map { row =>
       row.count(_ >= 2)
     }.sum
   }
 
-  def part2(claims: Seq[Claim]): Nothing = {
-    // todo
-    ???
+  def numClaimsPerSquare(claims: Seq[Claim]): Array[Array[Int]] = {
+    val xMax = claims.map(_.bottomRight.x).max
+    val yMax = claims.map(_.bottomRight.y).max
+
+    val claimsPerSquare = Array.fill(xMax + 1, yMax + 1)(0)
+
+    claims.foreach { claim =>
+      for (x <- claim.topLeft.x to claim.bottomRight.x;
+           y <- claim.topLeft.y to claim.bottomRight.y)
+      yield claimsPerSquare(x)(y) += 1
+    }
+
+    claimsPerSquare
+  }
+
+  def part2(claims: Seq[Claim]): Int = {
+    val claimsPerSquare = numClaimsPerSquare(claims)
+
+    val firstSuccessfulClaim =
+      claims.collectFirst {
+        Function.unlift { claim =>
+          if (isValid(claim, claimsPerSquare)) Some(claim)
+          else None
+        }
+      }.get
+
+    firstSuccessfulClaim.id
+  }
+
+  def isValid(claim: Claim, claimsPerSquare: Array[Array[Int]]): Boolean = {
+    {
+      for (x <- claim.topLeft.x to claim.bottomRight.x;
+           y <- claim.topLeft.y to claim.bottomRight.y)
+      yield claimsPerSquare(x)(y) == 1
+    }.fold(true)(_ && _)
   }
 }
