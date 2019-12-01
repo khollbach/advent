@@ -19,7 +19,7 @@ class GuardState(Enum):
 
 # Read in lines, strip whitespace
 lines = []
-for line in open('input').readlines():
+for line in open('../inputs/4').readlines():
     lines.append(line.strip())
 
 # Sort by the timestamp, which is the first thing on the line.

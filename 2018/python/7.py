@@ -1,6 +1,6 @@
 def parse():
     edges = []
-    for line in open('input'):
+    for line in open('../inputs/7'):
         words = line.split()
 
         # Reversed, for easier top. sort

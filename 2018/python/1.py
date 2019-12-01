@@ -1,6 +1,6 @@
 # Part 1
 
-f = open('input')
+f = open('../inputs/1')
 
 freq = 0
 for s in f.readlines():
@@ -11,7 +11,7 @@ print(freq)
 # Part 2
 
 changes = []
-for s in open('input').readlines():
+for s in open('../inputs/1').readlines():
     changes.append(int(s))
 
 freq = 0

@@ -3,7 +3,7 @@ from collections import Counter
 # Part 1
 
 # Read lines and strip whitespace
-ids = list(map(str.strip, open('input').readlines()))
+ids = list(map(str.strip, open('../inputs/2').readlines()))
 
 # Does s have any char with exactly freqency freq?
 def has_char_with_freq(freq, s):

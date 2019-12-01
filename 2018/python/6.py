@@ -1,6 +1,6 @@
 def getAndParseInput():
     pairs = []
-    for line in open('input'):
+    for line in open('../inputs/6'):
         pairs.append([int(x) for x in line.strip().split(', ')])
     return pairs
 

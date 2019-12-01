@@ -1,11 +1,11 @@
 def part1():
     # e.g., s == "TCZOXuUEebQgFfGTscCSt"
-    s = open('input').read().strip()
+    s = open('../inputs/5').read().strip()
 
     print(reacted_length(s))
 
 def part2():
-    s = open('input').read().strip()
+    s = open('../inputs/5').read().strip()
 
     best_l = len(s)
 

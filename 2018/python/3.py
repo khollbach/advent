@@ -10,7 +10,7 @@ Rect = namedtuple('Rect', 'id x y w h')
 pattern = re.compile(r'^#(\d+) @ (\d+),(\d+): (\d+)x(\d+)$')
 
 rects = []
-for line in open('input').readlines():
+for line in open('../inputs/3').readlines():
     line = line.strip()
 
     r = Rect(*map(int, pattern.match(line).groups()))
