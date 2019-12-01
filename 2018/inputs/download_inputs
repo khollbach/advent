@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for d in {1..25}; do
+    wget -O $d https://adventofcode.com/2018/day/$d/input \
+        --header "Cookie: session=53616c7465645f5f535d5b528b293f6f8b61cae21358d0d22aba4c235c643d77c3b765bb09da2d92059f0fbce4ddb9ef" \
+        || exit 1
+done
