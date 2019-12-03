@@ -71,9 +71,8 @@ class TestIntcodeComputer(unittest.TestCase):
             self.assertEqual(expected, cpu._mem)
 
 def find_correct_inputs(
-    program: Iterable[int], target_output: int
+    program: List[int], target_output: int
 ) -> (int, int):
-    program = list(program)
     for noun in range(100):
         for verb in range(100):
             cpu = IntcodeComputer(program)
@@ -82,9 +81,12 @@ def find_correct_inputs(
     assert False
 
 if __name__ == "__main__":
-    program = map(int, sys.stdin.readline().split(','))
+    program = list(map(int, sys.stdin.readline().split(",")))
+    output = IntcodeComputer(program).execute(12, 2)
+    print(f"output: {output}")
+
     target_output = 19690720
     noun, verb = find_correct_inputs(program, target_output)
-    print(f'noun: {noun}, verb: {verb}')
+    print(f"noun: {noun}, verb: {verb}")
 
     unittest.main()
