@@ -1,36 +1,54 @@
-from typing import List
+from typing import List, Iterable, Optional
 
 import sys, unittest
 
 class IntcodeComputer:
+    """An interpreter for Intcode programs."""
+
     ADD = 1
     MUL = 2
     HALT = 99
 
-    def __init__(self, program: List[int]):
-        self.code = program
-        self.pc = 0  # Program counter
+    def __init__(self, program: Iterable[int]):
+        self._reinit(program)
 
-    def execute(self):
+    def _reinit(self, program: Iterable[int]):
+        """Initialize the computer's memory and reset the program counter."""
+        self._mem = list(program)  # Make a copy of the input.
+        self._pc = 0  # Program counter
+
+    def execute(
+        self, noun: Optional[int] = None, verb: Optional[int] = None
+    ) -> int:
         """Run the program to completion."""
-        while self.step():
+        if noun is not None:
+            self._mem[1] = noun
+        if verb is not None:
+            self._mem[2] = verb
+
+        # Run until halted.
+        while self._step():
             pass
 
-    def step(self) -> bool:
-        """Return True iff the program should continue."""
-        if self.code[self.pc] == self.HALT:
+        self._pc = None  # Prevent accidental re-use.
+        return self._mem[0]
+
+    def _step(self) -> bool:
+        """Execute one instruction.
+        Return True iff the program should continue."""
+        if self._mem[self._pc] == self.HALT:
             return False
 
-        opcode, pos1, pos2, target_pos = self.code[self.pc:self.pc + 4]
+        opcode, pos1, pos2, target_pos = self._mem[self._pc:self._pc + 4]
         if opcode == self.ADD:
-            self.code[target_pos] = self.code[pos1] + self.code[pos2]
+            self._mem[target_pos] = self._mem[pos1] + self._mem[pos2]
         elif opcode == self.MUL:
-            self.code[target_pos] = self.code[pos1] * self.code[pos2]
+            self._mem[target_pos] = self._mem[pos1] * self._mem[pos2]
         else:
             assert False  # Those are the only valid opcodes.
 
         # Update the program counter.
-        self.pc += 4
+        self._pc += 4
         return True
 
 # todo: find a better way to organize test cases. They're probably meant to go
@@ -48,18 +66,25 @@ class TestIntcodeComputer(unittest.TestCase):
 
     def test_examples(self):
         for input_, expected in self.EXAMPLES:
-            IntcodeComputer(input_).execute()
-            self.assertEqual(input_, expected)
+            cpu = IntcodeComputer(input_)
+            cpu.execute()
+            self.assertEqual(expected, cpu._mem)
+
+def find_correct_inputs(
+    program: Iterable[int], target_output: int
+) -> (int, int):
+    program = list(program)
+    for noun in range(100):
+        for verb in range(100):
+            cpu = IntcodeComputer(program)
+            if cpu.execute(noun, verb) == target_output:
+                return noun, verb
+    assert False
 
 if __name__ == "__main__":
-    program = list(map(int, sys.stdin.readline().split(',')))
-
-    program[1] = 12
-    program[2] = 2
-
-    cpu = IntcodeComputer(program)
-    cpu.execute()
-
-    print(program[0])
+    program = map(int, sys.stdin.readline().split(','))
+    target_output = 19690720
+    noun, verb = find_correct_inputs(program, target_output)
+    print(f'noun: {noun}, verb: {verb}')
 
     unittest.main()
