@@ -1,5 +1,5 @@
 from io import TextIOBase
-from typing import List, Tuple, Generator, Set
+from typing import List, Tuple, Generator, Set, Dict
 from collections import defaultdict, namedtuple
 from itertools import islice
 
@@ -31,30 +31,50 @@ def read_wire(input_stream: TextIOBase) -> Wire:
     deltas = list(map(direction_to_delta, directions))
     return deltas
 
-def wire_to_points(wire: Wire) -> Set[Point]:
-    """Return the points this wire passes through, *EXCEPT* the origin."""
-    points = set()
+def wire_to_points(wire: Wire) -> Dict[Point, int]:
+    """
+    Return the points this wire passes through, *EXCEPT* the origin.
+    Those points are the keys of a dictionary whose values are the distance the
+    wire travelled to get to that point.
+    """
+    points = {}
+    distance_travelled = 0
     pos = ORIGIN
     for delta in wire:
         new_pos = pos + delta
         for i, p in enumerate(line_segment(pos, new_pos)):
-            if i > 0:
-                points.add(p)
+            if i == 0:  # Skip `pos` itself.
+                continue
+            distance_travelled += 1
+            if p not in points:
+                points[p] = distance_travelled
         pos = new_pos
     return points
 
-def intersections(wire1: Wire, wire2: Wire) -> Set[Point]:
-    """Return the intersections of the two wires, excluding the origin."""
-    set1 = wire_to_points(wire1)
-    set2 = wire_to_points(wire2)
-    return set1 & set2
+def intersections(wire1: Wire, wire2: Wire) -> Dict[Point, int]:
+    """
+    Return the intersections of the two wires, excluding the origin.
+    Each intersection point is the key of a dictionary, where the value is the
+    sum of the two distances travelled by the two wires to get to that point.
+    """
+    points1 = wire_to_points(wire1)
+    points2 = wire_to_points(wire2)
+    result = {}
+    for p in points1.keys() & points2.keys():  # Set-intersection.
+        result[p] = points1[p] + points2[p]
+    return result
 
-def closest_intersection(wire1: Wire, wire2: Wire) -> Point:
+def closest_intersection(wire1: Wire, wire2: Wire) -> Tuple[Point, int]:
     """
-    Return the intersection point closest to the origin, excluding the origin
-    itself.
+    Return the "closest" intersection point (as defined in the problem),
+    together with its combined distance-travelled along the two wires.
     """
-    return min(intersections(wire1, wire2), key=lambda p: distance(ORIGIN, p))
+    def compare_by(key_val_pair: Tuple[Point, int]) -> int:
+        point, dist = key_val_pair
+        return dist
+
+    # Return minimum distance point, together with that distance.
+    return min(intersections(wire1, wire2).items(), key=compare_by)
 
 def line_segment(p1: Point, p2: Point) -> Generator[Point, None, None]:
     """
@@ -103,4 +123,4 @@ if __name__ == "__main__":
     wire1 = read_wire(sys.stdin)
     wire2 = read_wire(sys.stdin)
 
-    print(distance(closest_intersection(wire1, wire2)))
+    print(closest_intersection(wire1, wire2))
