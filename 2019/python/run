@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ ${#@} != 1 ]]; then
+if [[ ${#@} < 1 ]]; then
     echo Expected argument: a number from 1 to 25
     exit 1
 fi
@@ -8,7 +8,10 @@ fi
 problem_number=$1
 shift
 
-for f in day$problem_number*.py; do
-    echo '    ***' $f: '***'
-    cat "../inputs/$problem_number" | pypy3 "$f" "$@"
+for suffix in "" "-2" "-test"; do
+    f=day$problem_number$suffix.py
+    if [[ -z "$suffix" || -f "$f" ]]; then
+        echo "    *** $f: ***"
+        cat "../inputs/$problem_number" | pypy3 "$f" "$@"
+    fi
 done

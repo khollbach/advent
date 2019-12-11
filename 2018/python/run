@@ -7,8 +7,11 @@ fi
 
 problem_number=$1
 shift
-cat "../inputs/$problem_number" | pypy3 "$problem_number.py" "$@"
 
-if [[ -f "$problem_number-2.py" ]]; then
-    cat "../inputs/$problem_number" | pypy3 "$problem_number-2.py" "$@"
-fi
+for suffix in "" "-2" "-test"; do
+    f=day$problem_number$suffix.py
+    if [[ -z "$suffix" || -f "$f" ]]; then
+        echo "    *** $f: ***"
+        cat "../inputs/$problem_number" | pypy3 "$f" "$@"
+    fi
+done
