@@ -61,8 +61,7 @@ class IntcodeComputer:
         # Update the program counter.
         self._pc += 4
 
-# todo: find a better way to organize test cases. They're probably meant to go
-# in another file.
+# Test cases should probably go in another file, but I'll move on for now.
 class TestIntcodeComputer(unittest.TestCase):
     EXAMPLES = [
         #(input, expected),
