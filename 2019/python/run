@@ -8,7 +8,7 @@ fi
 problem_number=$1
 shift
 
-for suffix in "" "-2" "-test"; do
+for suffix in "" "_2" "_test"; do
     f=day$problem_number$suffix.py
     if [[ -z "$suffix" || -f "$f" ]]; then
         echo "    *** $f: ***"
