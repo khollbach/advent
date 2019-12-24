@@ -1,28 +1,49 @@
 from day7 import IntcodeComputer, permutations
 
 from typing import List
-import fileinput
+from queue import Queue
+from threading import Thread
+import fileinput, queue
 
 def get_thruster_signal(program: List[int], settings: List[int]) -> int:
     num_amps = len(settings)
 
-    # todo: Init a number of queue-like objects to act as message buffers.
-    # Add a copy of `settings[i]` to each queue, 0 <= i < num_amps.
-    # Then append a copy of the value 0 to the 0th queue.
-    #?
+    # todo: implement the same functionality with simple deque objects and
+    # condition variables; then one last time with python lists and locks and
+    # cvs. Also, see what (if anything breaks) when you just use unsynchronized
+    # python lists!
 
-    for i in range(num_amps):
-        # todo: Spawn a thread to do the following:
+    # queues[i] is a message buffer for the inputs to amplifier i, which come
+    # from the outputs of amplifier i - 1 (mod num_amps).
+    queues = [Queue() for i in range(num_amps)]
+    for i, q in enumerate(queues):
+        q.put(settings[i])
+
+    # Initial value: 0 into amp #0.
+    queues[0].put(0)
+
+    # Function to be run by each thread (one thread per amp).
+    def run_amp(amp_idx: int) -> None:
+        i = amp_idx
+        n = num_amps
         IntcodeComputer(program).run(
-                            # todo: make this popleft block waiting
-            get_input_fn=(lambda: queues[i].popleft()),
-            send_output_fn=(lambda val: queues[(i + 1) % n].append(val)))
+            get_input_fn=(lambda: queues[i].get()),
+            send_output_fn=(lambda val: queues[(i + 1) % n].put(val)))
 
-    # todo: Join all the threads
-    # dequeue from the last queue
-    # assert that all queues are empty
+    # Run all the threads concurrently.
+    threads = []
+    for i in range(num_amps):
+        t = Thread(target=run_amp, args=(i,))
+        t.start()
+        threads.append(t)
+    for t in threads:
+        t.join()
 
-    return the_dequeued_value
+    # The input to amp #0 is the last amp's final output. Return this.
+    final_output = queues[0].get_nowait()
+    for q in queues:
+        assert q.qsize() == 0
+    return final_output
 
 def best_signal(program: List[int]) -> int:
     return max(
