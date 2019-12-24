@@ -8,11 +8,6 @@ import fileinput, queue
 def get_thruster_signal(program: List[int], settings: List[int]) -> int:
     num_amps = len(settings)
 
-    # todo: implement the same functionality with simple deque objects and
-    # condition variables; then one last time with python lists and locks and
-    # cvs. Also, see what (if anything breaks) when you just use unsynchronized
-    # python lists!
-
     # queues[i] is a message buffer for the inputs to amplifier i, which come
     # from the outputs of amplifier i - 1 (mod num_amps).
     queues = [Queue() for i in range(num_amps)]
@@ -40,7 +35,7 @@ def get_thruster_signal(program: List[int], settings: List[int]) -> int:
         t.join()
 
     # The input to amp #0 is the last amp's final output. Return this.
-    final_output = queues[0].get_nowait()
+    final_output = queues[0].get()
     for q in queues:
         assert q.qsize() == 0
     return final_output
