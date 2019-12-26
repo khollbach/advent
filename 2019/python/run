@@ -12,6 +12,6 @@ for suffix in "" "_2" "_test"; do
     f=day$problem_number$suffix.py
     if [[ -z "$suffix" || -f "$f" ]]; then
         echo "    *** $f: ***"
-        cat "../inputs/$problem_number" | pypy3 "$f" "$@"
+        cat "../inputs/$problem_number" | pypy3 "$f" "$@" || exit 1
     fi
 done

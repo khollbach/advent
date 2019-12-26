@@ -1,4 +1,5 @@
-from day7 import IntcodeComputer, permutations
+from cpu.intcode_computer import IntcodeComputer
+from day7 import permutations
 
 from typing import List
 from queue import Queue

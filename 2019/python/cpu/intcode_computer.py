@@ -1,4 +1,4 @@
-from typing import List, Iterable, Optional, Callable, Generator
+from typing import List, Iterable, Optional, Callable, Generator, Union
 import sys, doctest
 
 class ProgramHalt(Exception):
@@ -14,6 +14,7 @@ class IntcodeComputer:
     JUMP_IF_FALSE = 6
     LT = 7
     EQ = 8
+    ADJUST_RB = 9
     HALT = 99
 
     def __init__(self, program: Iterable[int]):
@@ -21,6 +22,7 @@ class IntcodeComputer:
         self._ORIGINAL_PROGRAM: List[int] = list(program)
         self._mem: Memory = None
         self._pc: int = None
+        self._relative_base: int = None
         self._get_input_fn: Callable[[], int] = None
         self._send_output_fn: Callable[[int], None] = None
 
@@ -44,6 +46,7 @@ class IntcodeComputer:
         """
         self._mem = Memory(self._ORIGINAL_PROGRAM)
         self._pc = 0
+        self._relative_base = 0
 
         if noun is not None:
             self._mem[1] = noun
@@ -81,13 +84,23 @@ class IntcodeComputer:
             self._pc += 4
             val1, val2 = self._access_params(param_modes, param1, param2)
             if opcode == self.ADD:
-                self._mem[target_pos] = val1 + val2
+                self._mem[target_pos] = val1 + val2  # TODO: relative mode!
             elif opcode == self.MUL:
-                self._mem[target_pos] = val1 * val2
+                self._mem[target_pos] = val1 * val2  # TODO: relative mode!
         elif opcode == self.INPUT:
             _, target_pos = self._mem[self._pc:self._pc + 2]
             self._pc += 2
-            self._mem[target_pos] = self._get_input_fn()
+
+            # TODO: implement this for all instrs that write to memory.
+            #   You might want a separate class for instruction, representing
+            #   the types of parameters the instruction has.
+            # Weird edge case: writing to an address using relative mode is
+            # allowed.
+            #assert param_modes in (0, 2)
+            #if param_modes == 2:
+            #    target_pos += self._relative_base
+
+            self._mem[target_pos] = self._get_input_fn()  # TODO: relative mode!
         elif opcode == self.OUTPUT:
             _, param = self._mem[self._pc:self._pc + 2]
             self._pc += 2
@@ -110,46 +123,70 @@ class IntcodeComputer:
                 result = 1
             else:
                 result = 0
-            self._mem[target_pos] = result
+            self._mem[target_pos] = result  # TODO: relative mode!
+        elif opcode == self.ADJUST_RB:
+            _, param = self._mem[self._pc:self._pc + 2]
+            self._pc += 2
+            val, = self._access_params(param_modes, param)
+            self._relative_base += val
         else:
-            assert False  # Those are the only valid opcodes.
+            print("Unexpected opcode:", opcode)
+            assert False
 
     def _access_params(self, param_modes: int, *params: int) -> List[int]:
         """
         Take the parameter mode flags (as described in the spec, in *REVERSE*
         order), and zero or more parameters. For each parameter, return either
-        value itself or the value pointed to, depending on the flag (1 or 0
-        respectively).
+        value itself or the value pointed to, or the pointed value relative to
+        the `relative_base`, depending on the flag (1 or 0 or 2, respectively).
         """
         vals = []
         for param in params:
-            # Position mode (dereference the parameter)
-            if param_modes % 10 == 0:
-                val = self._mem[param]
+            mode = param_modes % 10
+
+            # Position mode / relative mode (dereference the parameter)
+            if mode in (0, 2):
+                # In relative mode, the offset is relative to the r.b.
+                base = self._relative_base if mode == 2 else 0
+                val = self._mem[base + param]
             # Immediate mode
             else:
-                assert param_modes % 10 == 1
+                assert mode == 1
                 val = param
+
             vals.append(val)
             param_modes //= 10
         return vals
 
 class Memory(list):
+    """List[int] wrapper that extends and fills with zeros as neccessary."""
     def __init__(self, program: Iterable[int]):
-        super(program)
+        super().__init__(program)
 
-    def __getitem__(self, address: int) -> int:
-        assert address >= 0
-        if address >= len(self):
-            return 0
-        return super.__getitem__(self, address)
+    def _extend(self, newlen: int) -> None:
+        """Entend memory to be at least this long by padding with zeros."""
+        diff = newlen - len(self)
+        if diff > 0:
+            self.extend([0] * diff)
+
+    def __getitem__(self, address: Union[int, slice]) -> int:
+        if isinstance(address, int):
+            assert address >= 0
+            if address >= len(self):
+                self._extend(address + 1)
+        elif isinstance(address, slice):
+            # (I'll implement the general case if/when the time comes...)
+            assert address.step is None or address.step > 0
+
+            if address.stop - 1 >= len(self):
+                self._extend(address.stop)
+        return super().__getitem__(address)
 
     def __setitem__(self, address: int, value: int) -> None:
         assert address >= 0
         if address >= len(self):
-            extra_length = address - len(self._mem) + 1
-            self.extend([0] * extra_length)
-        super.__setitem__(self, address, value)
+            self._extend(address + 1)
+        super().__setitem__(address, value)
 
 if __name__ == "__main__":
     doctest.testmod()
