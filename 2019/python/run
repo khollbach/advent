@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ ${#@} < 1 ]]; then
-    echo Expected argument: a number from 1 to 25
+    echo Expected argument: a number from 1 through 25
     exit 1
 fi
 

@@ -1,26 +1,33 @@
 from typing import List, Iterable, Optional, Callable, Generator, Union
-import sys, doctest
+from enum import Enum
+from collections import namedtuple
 
-class ProgramHalt(Exception):
+Instruction = namedtuple("Instruction", "opcode, param_types")
+
+class Instr:
+    ADD = Instruction(1, "rrw")
+    MUL = Instruction(2, "rrw")
+    INPUT = Instruction(3, "w")
+    OUTPUT = Instruction(4, "r")
+    JUMP_IF_TRUE = Instruction(5, "rr")
+    JUMP_IF_FALSE = Instruction(6, "rr")
+    LT = Instruction(7, "rrw")
+    EQ = Instruction(8, "rrw")
+    ADJUST_RB = Instruction(9, "r")
+    HALT = Instruction(99, "")
+
+class _ProgramHalt(Exception):
+    """Raised when a halt instruction executes."""
     pass
+
 
 class IntcodeComputer:
     """An interpreter for Intcode programs."""
-    ADD = 1
-    MUL = 2
-    INPUT = 3
-    OUTPUT = 4
-    JUMP_IF_TRUE = 5
-    JUMP_IF_FALSE = 6
-    LT = 7
-    EQ = 8
-    ADJUST_RB = 9
-    HALT = 99
 
     def __init__(self, program: Iterable[int]):
         """Create a new IntcodeComputer for running the given program."""
         self._ORIGINAL_PROGRAM: List[int] = list(program)
-        self._mem: Memory = None
+        self._mem: _Memory = None
         self._pc: int = None
         self._relative_base: int = None
         self._get_input_fn: Callable[[], int] = None
@@ -44,7 +51,7 @@ class IntcodeComputer:
         Input and output are performed via the given functions (or stdin/stdout
         if unspecified).
         """
-        self._mem = Memory(self._ORIGINAL_PROGRAM)
+        self._mem = _Memory(self._ORIGINAL_PROGRAM)
         self._pc = 0
         self._relative_base = 0
 
@@ -64,101 +71,98 @@ class IntcodeComputer:
         try:
             while True:
                 self._step()
-        except ProgramHalt:
+        except _ProgramHalt:
             pass
 
         return self._mem[0]
 
     def _step(self) -> None:
         """
-        Execute one instruction. Throw ProgramHalt if it was a halt
-        instruction.
+        Execute one instruction and update the program counter.
+        Throw _ProgramHalt if it was a halt instruction.
         """
         opcode = self._mem[self._pc] % 100  # Two right-most digits.
         param_modes = self._mem[self._pc] // 100  # Leading digits.
 
-        if opcode == self.HALT:
-            raise ProgramHalt
-        elif opcode in (self.ADD, self.MUL):
-            _, param1, param2, target_pos = self._mem[self._pc:self._pc + 4]
-            self._pc += 4
-            val1, val2 = self._access_params(param_modes, param1, param2)
-            if opcode == self.ADD:
-                self._mem[target_pos] = val1 + val2  # TODO: relative mode!
-            elif opcode == self.MUL:
-                self._mem[target_pos] = val1 * val2  # TODO: relative mode!
-        elif opcode == self.INPUT:
-            _, target_pos = self._mem[self._pc:self._pc + 2]
-            self._pc += 2
-
-            # TODO: implement this for all instrs that write to memory.
-            #   You might want a separate class for instruction, representing
-            #   the types of parameters the instruction has.
-            # Weird edge case: writing to an address using relative mode is
-            # allowed.
-            #assert param_modes in (0, 2)
-            #if param_modes == 2:
-            #    target_pos += self._relative_base
-
-            self._mem[target_pos] = self._get_input_fn()  # TODO: relative mode!
-        elif opcode == self.OUTPUT:
-            _, param = self._mem[self._pc:self._pc + 2]
-            self._pc += 2
-            val, = self._access_params(param_modes, param)
+        if opcode == Instr.HALT.opcode:
+            () = self._consume_args(Instr.HALT, param_modes)
+            raise _ProgramHalt
+        elif opcode == Instr.ADD.opcode:
+            val1, val2, target_pos = self._consume_args(Instr.ADD, param_modes)
+            self._mem[target_pos] = val1 + val2
+        elif opcode == Instr.MUL.opcode:
+            val1, val2, target_pos = self._consume_args(Instr.MUL, param_modes)
+            self._mem[target_pos] = val1 * val2
+        elif opcode == Instr.INPUT.opcode:
+            target_pos, = self._consume_args(Instr.INPUT, param_modes)
+            self._mem[target_pos] = self._get_input_fn()
+        elif opcode == Instr.OUTPUT.opcode:
+            val, = self._consume_args(Instr.OUTPUT, param_modes)
             self._send_output_fn(val)
-        elif opcode in (self.JUMP_IF_TRUE, self.JUMP_IF_FALSE):
-            _, param1, param2 = self._mem[self._pc:self._pc + 3]
-            self._pc += 3
-            condition, target_instr = \
-                self._access_params(param_modes, param1, param2)
-            if opcode == self.JUMP_IF_TRUE and condition != 0 or \
-                    opcode == self.JUMP_IF_FALSE and condition == 0:
+        elif opcode == Instr.JUMP_IF_TRUE.opcode:
+            condition, target_instr = self._consume_args(Instr.JUMP_IF_TRUE, param_modes)
+            if condition != 0:
                 self._pc = target_instr
-        elif opcode in (self.LT, self.EQ):
-            _, param1, param2, target_pos = self._mem[self._pc:self._pc + 4]
-            self._pc += 4
-            val1, val2 = self._access_params(param_modes, param1, param2)
-            if opcode == self.LT and val1 < val2 or \
-                    opcode == self.EQ and val1 == val2:
-                result = 1
-            else:
-                result = 0
-            self._mem[target_pos] = result  # TODO: relative mode!
-        elif opcode == self.ADJUST_RB:
-            _, param = self._mem[self._pc:self._pc + 2]
-            self._pc += 2
-            val, = self._access_params(param_modes, param)
+        elif opcode == Instr.JUMP_IF_FALSE.opcode:
+            condition, target_instr = self._consume_args(Instr.JUMP_IF_FALSE, param_modes)
+            if condition == 0:
+                self._pc = target_instr
+        elif opcode == Instr.LT.opcode:
+            val1, val2, target_pos = self._consume_args(Instr.LT, param_modes)
+            self._mem[target_pos] = int(val1 < val2)
+        elif opcode == Instr.EQ.opcode:
+            val1, val2, target_pos = self._consume_args(Instr.EQ, param_modes)
+            self._mem[target_pos] = int(val1 == val2)
+        elif opcode == Instr.ADJUST_RB.opcode:
+            val, = self._consume_args(Instr.ADJUST_RB, param_modes)
             self._relative_base += val
         else:
             print("Unexpected opcode:", opcode)
             assert False
 
-    def _access_params(self, param_modes: int, *params: int) -> List[int]:
+    def _consume_args(self, instr: Instruction, param_modes: int) -> List[int]:
         """
-        Take the parameter mode flags (as described in the spec, in *REVERSE*
-        order), and zero or more parameters. For each parameter, return either
-        value itself or the value pointed to, or the pointed value relative to
-        the `relative_base`, depending on the flag (1 or 0 or 2, respectively).
+        Consume the instruction's parameters; deferencing as necessary
+        according to the parameter mode flags (as described in the spec, in
+        *REVERSE* order).
+
+        Update the program counter accordingly, to point to the beginning of
+        the next instruction.
         """
+        # Consume params; some may be dereferenced before returning, depending
+        # on param_modes. (Update the program counter!)
+        num_params = len(instr.param_types)
+        params = self._mem[self._pc + 1 : self._pc + 1 + num_params]
+        self._pc += 1 + num_params
+
+        # Handle param_modes.
         vals = []
-        for param in params:
+        for param_type, param in zip(instr.param_types, params):
             mode = param_modes % 10
 
-            # Position mode / relative mode (dereference the parameter)
-            if mode in (0, 2):
-                # In relative mode, the offset is relative to the r.b.
-                base = self._relative_base if mode == 2 else 0
-                val = self._mem[base + param]
             # Immediate mode
-            else:
-                assert mode == 1
+            if mode == 1:
+                # Write-params are never in immediate mode.
+                assert param_type == "r"
                 val = param
+            # Position mode / relative mode
+            # Read-params are dereferenced; write params are not.
+            else:
+                assert mode in (0, 2)
+                # In relative mode, the address is relative to the r.b.
+                base = self._relative_base if mode == 2 else 0
+                if param_type == "r":
+                    val = self._mem[base + param]
+                else:
+                    assert param_type == "w"
+                    val = base + param
 
             vals.append(val)
             param_modes //= 10
+        assert param_modes == 0
         return vals
 
-class Memory(list):
+class _Memory(list):
     """List[int] wrapper that extends and fills with zeros as neccessary."""
     def __init__(self, program: Iterable[int]):
         super().__init__(program)
@@ -187,6 +191,3 @@ class Memory(list):
         if address >= len(self):
             self._extend(address + 1)
         super().__setitem__(address, value)
-
-if __name__ == "__main__":
-    doctest.testmod()
