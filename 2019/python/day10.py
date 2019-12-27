@@ -2,77 +2,58 @@ from typing import List, Set, Tuple
 import fileinput
 import math
 
+def main():
+    grid = read_grid()
+    asteroids = get_asteroids(grid)
+
+    print(max(count_visible_asteroids(asteroids, i, j) for i, j in asteroids))
+
 def read_grid() -> List[List[bool]]:
     grid = []
     for line in fileinput.input():
+        line = line.rstrip("\n")
         row = []
         for char in line:
             if char == "#":
                 row.append(True)
-            elif char == ".":
+            else:
+                assert char == "."
                 row.append(False)
         grid.append(row)
     return grid
 
-def print_grid(grid: List[List[bool]]):
-    for line in grid:
-        for char in line:
-            if char:
+def print_grid(grid: List[List[bool]]) -> None:
+    for row in grid:
+        for cell in row:
+            if cell:
                 print("#", end="")
             else:
                 print(".", end="")
-        print() # newline
+        print()
 
-def reduce_fraction(x, y) -> Tuple[int, int]:
-    d = math.gcd(abs(x), abs(y))
-    x_reduced = x // d
-    y_reduced = y // d
-    return x_reduced, y_reduced # retain signs
-
-def count_visible_asteroids(i: int, j: int, asteroids: Set[Tuple[int, int]]) -> int:
-    # find distinct slopes
-    slopes = set()
-
-    for asteroid in asteroids:
-        # skip this asteroid but compute for all others
-        if asteroid != (i, j):
-            # compute distance
-            x, y = asteroid
-            x_diff = x - i
-            y_diff = y - j
-            # compute slope and store distinct slopes
-            slope = reduce_fraction(x_diff, y_diff)
-            if slope not in slopes: # unnecessary guard but helps readability
-                slopes.add(slope)
-
-    return len(slopes)
-
-# Find asteroids and store as a set of coordinates
 def get_asteroids(grid: List[List[bool]]) -> Set[Tuple[int, int]]:
-    asteroids = set() # empty set
-
+    """Find asteroids and store as a set of coordinates."""
+    asteroids = set()
     for i in range(len(grid)):
         for j in range(len(grid[i])):
             if grid[i][j]:
                 asteroids.add((i, j))
-
     return asteroids
 
-def main():
-    grid = read_grid()
-    print_grid(grid)
+def count_visible_asteroids(
+    asteroids: Set[Tuple[int, int]],
+    i: int,
+    j: int
+) -> int:
+    """How many asteroids are visible from (i, j)?"""
+    slopes: Set[Tuple[int, int]] = set()
+    for x, y in asteroids:
+        if (x, y) != (i, j):
+            slopes.add(reduce_slope(x - i, y - j))
+    return len(slopes)
 
-    asteroids = get_asteroids(grid)
-
-    max_count = 0
-    best_location = None
-
-    for asteroid in asteroids:
-        x, y = asteroid
-        count = count_visible_asteroids(x, y, asteroids)
-        if count > max_count:
-            max_count = count
-            best_location = (x, y)
-            print("New best is", best_location, "within sight of", max_count)
+def reduce_slope(dx: int, dy: int) -> Tuple[int, int]:
+    divisor = math.gcd(abs(dx), abs(dy))
+    return (dx // divisor, dy // divisor)
 
 main()
