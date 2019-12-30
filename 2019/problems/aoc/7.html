@@ -87,10 +87,10 @@ If you'd like to hang out, I'm @ericwastl on Twitter.
 
 -->
 <body>
-<header><div><h1 class="title-global"><a href="https://adventofcode.com/">Advent of Code</a></h1><nav><ul><li><a href="https://adventofcode.com/2019/about">[About]</a></li><li><a href="https://adventofcode.com/2019/events">[Events]</a></li><li><a href="https://teespring.com/adventofcode-2019" target="_blank">[Shop]</a></li><li><a href="https://adventofcode.com/2019/settings">[Settings]</a></li><li><a href="https://adventofcode.com/2019/auth/logout">[Log Out]</a></li></ul></nav><div class="user">(anonymous user #538341) <span class="star-count">10*</span></div></div><div><h1 class="title-event">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="title-event-wrap">/*</span><a href="https://adventofcode.com/2019">2019</a><span class="title-event-wrap">*/</span></h1><nav><ul><li><a href="https://adventofcode.com/2019">[Calendar]</a></li><li><a href="https://adventofcode.com/2019/support">[AoC++]</a></li><li><a href="https://adventofcode.com/2019/sponsors">[Sponsors]</a></li><li><a href="https://adventofcode.com/2019/leaderboard">[Leaderboard]</a></li><li><a href="https://adventofcode.com/2019/stats">[Stats]</a></li></ul></nav></div></header>
+<header><div><h1 class="title-global"><a href="https://adventofcode.com/">Advent of Code</a></h1><nav><ul><li><a href="https://adventofcode.com/2019/about">[About]</a></li><li><a href="https://adventofcode.com/2019/events">[Events]</a></li><li><a href="https://teespring.com/adventofcode-2019" target="_blank">[Shop]</a></li><li><a href="https://adventofcode.com/2019/settings">[Settings]</a></li><li><a href="https://adventofcode.com/2019/auth/logout">[Log Out]</a></li></ul></nav><div class="user">(anonymous user #538341) <span class="star-count">22*</span></div></div><div><h1 class="title-event">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="title-event-wrap">λy.</span><a href="https://adventofcode.com/2019">2019</a><span class="title-event-wrap"></span></h1><nav><ul><li><a href="https://adventofcode.com/2019">[Calendar]</a></li><li><a href="https://adventofcode.com/2019/support">[AoC++]</a></li><li><a href="https://adventofcode.com/2019/sponsors">[Sponsors]</a></li><li><a href="https://adventofcode.com/2019/leaderboard">[Leaderboard]</a></li><li><a href="https://adventofcode.com/2019/stats">[Stats]</a></li></ul></nav></div></header>
 
 <div id="sidebar">
-<div id="sponsor"><div class="quiet">Our <a href="https://adventofcode.com/2019/sponsors">sponsors</a> help make Advent of Code possible:</div><div class="sponsor"><a href="https://www.twilio.com/quest" target="_blank" onclick="if(ga)ga('send','event','sponsor','sidebar',this.href);" rel="noopener">TwilioQuest</a> - Play Advent of Code and earn rad loot in TwilioQuest, a developer RPG for Mac, Windows, and Linux. Learn JavaScript, Python, git, APIs for SMS, VoIP, or WhatsApp, and much more.</div></div>
+<div id="sponsor"><div class="quiet">Our <a href="https://adventofcode.com/2019/sponsors">sponsors</a> help make Advent of Code possible:</div><div class="sponsor"><a href="https://about.sourcegraph.com/" target="_blank" onclick="if(ga)ga('send','event','sponsor','sidebar',this.href);" rel="noopener">Sourcegraph</a> - Build the new standard developer platform on a globally-distributed remote-first team. We value ownership, autonomy, communication, and transparency.</div></div>
 </div><!--/sidebar-->
 
 <main>
@@ -122,11 +122,34 @@ If you'd like to hang out, I'm @ericwastl on Twitter.
 </ul>
 <p>Try every combination of phase settings on the amplifiers.  <em>What is the highest signal that can be sent to the thrusters?</em></p>
 </article>
-<p>To begin, <a href="https://adventofcode.com/2019/day/7/input" target="_blank">get your puzzle input</a>.</p>
-<form method="post" action="https://adventofcode.com/2019/day/7/answer"><input type="hidden" name="level" value="1"/><p>Answer: <input type="text" name="answer" autocomplete="off"/> <input type="submit" value="[Submit]"/></p></form>
+<p>Your puzzle answer was <code>398674</code>.</p><article class="day-desc"><h2 id="part2">--- Part Two ---</h2><p>It's no good - in this configuration, the amplifiers can't generate a large enough output signal to produce the thrust you'll need.  The Elves quickly talk you through rewiring the amplifiers into a <em>feedback loop</em>:</p>
+<pre><code>      O-------O  O-------O  O-------O  O-------O  O-------O
+0 -+-&gt;| Amp A |-&gt;| Amp B |-&gt;| Amp C |-&gt;| Amp D |-&gt;| Amp E |-.
+   |  O-------O  O-------O  O-------O  O-------O  O-------O |
+   |                                                        |
+   '--------------------------------------------------------+
+                                                            |
+                                                            v
+                                                     (to thrusters)
+</code></pre>
+<p>Most of the amplifiers are connected as they were before; amplifier <code>A</code>'s output is connected to amplifier <code>B</code>'s input, and so on. <em>However,</em> the output from amplifier <code>E</code> is now connected into amplifier <code>A</code>'s input. This creates the feedback loop: the signal will be sent through the amplifiers <em>many times</em>.</p>
+<p>In feedback loop mode, the amplifiers need <em>totally different phase settings</em>: integers from <code>5</code> to <code>9</code>, again each used exactly once. These settings will cause the Amplifier Controller Software to repeatedly take input and produce output many times before halting. Provide each amplifier its phase setting at its first input instruction; all further input/output instructions are for signals.</p>
+<p>Don't restart the Amplifier Controller Software on any amplifier during this process. Each one should continue receiving and sending signals until it halts.</p>
+<p>All signals sent or received in this process will be between pairs of amplifiers except the very first signal and the very last signal. To start the process, a <code>0</code> signal is sent to amplifier <code>A</code>'s input <em>exactly once</em>.</p>
+<p>Eventually, the software on the amplifiers will halt after they have processed the final loop. When this happens, the last output signal from amplifier <code>E</code> is sent to the thrusters. Your job is to <em>find the largest output signal that can be sent to the thrusters</em> using the new phase settings and feedback loop arrangement.</p>
+<p>Here are some example programs:</p>
+<ul>
+<li><p>Max thruster signal <em><code>139629729</code></em> (from phase setting sequence <code>9,8,7,6,5</code>):</p><pre><code>3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,<br/>27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5</code></pre></li>
+<li><p>Max thruster signal <em><code>18216</code></em> (from phase setting sequence <code>9,7,8,5,6</code>):</p><pre><code>3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,<br/>-5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,<br/>53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10</code></pre></li>
+</ul>
+<p>Try every combination of the new phase settings on the amplifier feedback loop.  <em>What is the highest signal that can be sent to the thrusters?</em></p>
+</article>
+<p>Your puzzle answer was <code>39431233</code>.</p><p class="day-success">Both parts of this puzzle are complete! They provide two gold stars: **</p>
+<p>At this point, you should <a href="https://adventofcode.com/2019">return to your Advent calendar</a> and try another puzzle.</p>
+<p>If you still want to see it, you can <a href="https://adventofcode.com/2019/day/7/input" target="_blank">get your puzzle input</a>.</p>
 <p>You can also <span class="share">[Share<span class="share-content">on
-  <a href="https://twitter.com/intent/tweet?text=%22Amplification+Circuit%22+%2D+Day+7+%2D+Advent+of+Code+2019&amp;url=https%3A%2F%2Fadventofcode%2Ecom%2F2019%2Fday%2F7&amp;related=ericwastl&amp;hashtags=AdventOfCode" target="_blank">Twitter</a>
-  <a href="javascript:void(0);" onclick="var mastodon_instance=prompt('Mastodon Instance / Server Name?'); if(typeof mastodon_instance==='string' && mastodon_instance.length){this.href='https://'+mastodon_instance+'/share?text=%22Amplification+Circuit%22+%2D+Day+7+%2D+Advent+of+Code+2019+%23AdventOfCode+https%3A%2F%2Fadventofcode%2Ecom%2F2019%2Fday%2F7'}else{return false;}" target="_blank">Mastodon</a
+  <a href="https://twitter.com/intent/tweet?text=I%27ve+completed+%22Amplification+Circuit%22+%2D+Day+7+%2D+Advent+of+Code+2019&amp;url=https%3A%2F%2Fadventofcode%2Ecom%2F2019%2Fday%2F7&amp;related=ericwastl&amp;hashtags=AdventOfCode" target="_blank">Twitter</a>
+  <a href="javascript:void(0);" onclick="var mastodon_instance=prompt('Mastodon Instance / Server Name?'); if(typeof mastodon_instance==='string' && mastodon_instance.length){this.href='https://'+mastodon_instance+'/share?text=I%27ve+completed+%22Amplification+Circuit%22+%2D+Day+7+%2D+Advent+of+Code+2019+%23AdventOfCode+https%3A%2F%2Fadventofcode%2Ecom%2F2019%2Fday%2F7'}else{return false;}" target="_blank">Mastodon</a
 ></span>]</span> this puzzle.</p>
 </main>
 

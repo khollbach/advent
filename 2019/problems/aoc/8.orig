@@ -87,10 +87,10 @@ If you'd like to hang out, I'm @ericwastl on Twitter.
 
 -->
 <body>
-<header><div><h1 class="title-global"><a href="/">Advent of Code</a></h1><nav><ul><li><a href="/2019/about">[About]</a></li><li><a href="/2019/events">[Events]</a></li><li><a href="https://teespring.com/adventofcode-2019" target="_blank">[Shop]</a></li><li><a href="/2019/settings">[Settings]</a></li><li><a href="/2019/auth/logout">[Log Out]</a></li></ul></nav><div class="user">(anonymous user #538341) <span class="star-count">10*</span></div></div><div><h1 class="title-event">&nbsp;&nbsp;&nbsp;<span class="title-event-wrap">0x0000|</span><a href="/2019">2019</a><span class="title-event-wrap"></span></h1><nav><ul><li><a href="/2019">[Calendar]</a></li><li><a href="/2019/support">[AoC++]</a></li><li><a href="/2019/sponsors">[Sponsors]</a></li><li><a href="/2019/leaderboard">[Leaderboard]</a></li><li><a href="/2019/stats">[Stats]</a></li></ul></nav></div></header>
+<header><div><h1 class="title-global"><a href="/">Advent of Code</a></h1><nav><ul><li><a href="/2019/about">[About]</a></li><li><a href="/2019/events">[Events]</a></li><li><a href="https://teespring.com/adventofcode-2019" target="_blank">[Shop]</a></li><li><a href="/2019/settings">[Settings]</a></li><li><a href="/2019/auth/logout">[Log Out]</a></li></ul></nav><div class="user">(anonymous user #538341) <span class="star-count">22*</span></div></div><div><h1 class="title-event">&nbsp;&nbsp;<span class="title-event-wrap">{:year </span><a href="/2019">2019</a><span class="title-event-wrap">}</span></h1><nav><ul><li><a href="/2019">[Calendar]</a></li><li><a href="/2019/support">[AoC++]</a></li><li><a href="/2019/sponsors">[Sponsors]</a></li><li><a href="/2019/leaderboard">[Leaderboard]</a></li><li><a href="/2019/stats">[Stats]</a></li></ul></nav></div></header>
 
 <div id="sidebar">
-<div id="sponsor"><div class="quiet">Our <a href="/2019/sponsors">sponsors</a> help make Advent of Code possible:</div><div class="sponsor"><a href="https://www.reaktor.com/advent-of-code" target="_blank" onclick="if(ga)ga('send','event','sponsor','sidebar',this.href);" rel="noopener">Reaktor</a> - Tracking Santa from space since 2018. Always looking for more talented Santa&apos;s little helpers.</div></div>
+<div id="sponsor"><div class="quiet">Our <a href="/2019/sponsors">sponsors</a> help make Advent of Code possible:</div><div class="sponsor"><a href="https://www.bjss.com/joinus/" target="_blank" onclick="if(ga)ga('send','event','sponsor','sidebar',this.href);" rel="noopener">BJSS</a> - Good luck to all BJSSers competing in Advent of Code 2019.</div></div>
 </div><!--/sidebar-->
 
 <main>
@@ -110,11 +110,40 @@ Layer 2: 789
 <p>The image you received is <em><code>25</code> pixels wide and <code>6</code> pixels tall</em>.</p>
 <p>To make sure the image wasn't corrupted during transmission, the Elves would like you to find the layer that contains the <em>fewest <code>0</code> digits</em>.  On that layer, what is <em>the number of <code>1</code> digits multiplied by the number of <code>2</code> digits?</em></p>
 </article>
-<p>To begin, <a href="8/input" target="_blank">get your puzzle input</a>.</p>
-<form method="post" action="8/answer"><input type="hidden" name="level" value="1"/><p>Answer: <input type="text" name="answer" autocomplete="off"/> <input type="submit" value="[Submit]"/></p></form>
+<p>Your puzzle answer was <code>2413</code>.</p><article class="day-desc"><h2 id="part2">--- Part Two ---</h2><p>Now you're ready to decode the image. The image is rendered by stacking the layers and aligning the pixels with the same positions in each layer. The digits indicate the color of the corresponding pixel: <code>0</code> is black, <code>1</code> is white, and <code>2</code> is transparent.</p>
+<p>The layers are rendered with the first layer in front and the last layer in back. So, if a given position has a transparent pixel in the first and second layers, a black pixel in the third layer, and a white pixel in the fourth layer, the final image would have a <em>black</em> pixel at that position.</p>
+<p>For example, given an image <code>2</code> pixels wide and <code>2</code> pixels tall, the image data <code>0222112222120000</code> corresponds to the following image layers:</p>
+<pre><code>Layer 1: <em>0</em>2
+         22
+
+Layer 2: 1<em>1</em>
+         22
+
+Layer 3: 22
+         <em>1</em>2
+
+Layer 4: 00
+         0<em>0</em>
+</code></pre>
+<p>Then, the full image can be found by determining the top visible pixel in each position:</p>
+<ul>
+<li>The top-left pixel is <em>black</em> because the top layer is <code>0</code>.</li>
+<li>The top-right pixel is <em>white</em> because the top layer is <code>2</code> (transparent), but the second layer is <code>1</code>.</li>
+<li>The bottom-left pixel is <em>white</em> because the top two layers are <code>2</code>, but the third layer is <code>1</code>.</li>
+<li>The bottom-right pixel is <em>black</em> because the only visible pixel in that position is <code>0</code> (from layer 4).</li>
+</ul>
+<p>So, the final image looks like this:</p>
+<pre><code>01
+10
+</code></pre>
+<p><em>What message is produced after decoding your image?</em></p>
+</article>
+<p>Your puzzle answer was <code>BCPZB</code>.</p><p class="day-success">Both parts of this puzzle are complete! They provide two gold stars: **</p>
+<p>At this point, you should <a href="/2019">return to your Advent calendar</a> and try another puzzle.</p>
+<p>If you still want to see it, you can <a href="8/input" target="_blank">get your puzzle input</a>.</p>
 <p>You can also <span class="share">[Share<span class="share-content">on
-  <a href="https://twitter.com/intent/tweet?text=%22Space+Image+Format%22+%2D+Day+8+%2D+Advent+of+Code+2019&amp;url=https%3A%2F%2Fadventofcode%2Ecom%2F2019%2Fday%2F8&amp;related=ericwastl&amp;hashtags=AdventOfCode" target="_blank">Twitter</a>
-  <a href="javascript:void(0);" onclick="var mastodon_instance=prompt('Mastodon Instance / Server Name?'); if(typeof mastodon_instance==='string' && mastodon_instance.length){this.href='https://'+mastodon_instance+'/share?text=%22Space+Image+Format%22+%2D+Day+8+%2D+Advent+of+Code+2019+%23AdventOfCode+https%3A%2F%2Fadventofcode%2Ecom%2F2019%2Fday%2F8'}else{return false;}" target="_blank">Mastodon</a
+  <a href="https://twitter.com/intent/tweet?text=I%27ve+completed+%22Space+Image+Format%22+%2D+Day+8+%2D+Advent+of+Code+2019&amp;url=https%3A%2F%2Fadventofcode%2Ecom%2F2019%2Fday%2F8&amp;related=ericwastl&amp;hashtags=AdventOfCode" target="_blank">Twitter</a>
+  <a href="javascript:void(0);" onclick="var mastodon_instance=prompt('Mastodon Instance / Server Name?'); if(typeof mastodon_instance==='string' && mastodon_instance.length){this.href='https://'+mastodon_instance+'/share?text=I%27ve+completed+%22Space+Image+Format%22+%2D+Day+8+%2D+Advent+of+Code+2019+%23AdventOfCode+https%3A%2F%2Fadventofcode%2Ecom%2F2019%2Fday%2F8'}else{return false;}" target="_blank">Mastodon</a
 ></span>]</span> this puzzle.</p>
 </main>
 
