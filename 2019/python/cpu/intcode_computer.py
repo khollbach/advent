@@ -25,13 +25,15 @@ class IntcodeComputer:
     """An interpreter for Intcode programs."""
 
     def __init__(self, program: Iterable[int]):
-        """Create a new IntcodeComputer for running the given program."""
-        self._ORIGINAL_PROGRAM: List[int] = list(program)
+        """
+        Create a new IntcodeComputer for running the given program.
+
+        The program can be run multiple times using the same IntcodeComputer.
+        """
+        self._original_program: List[int] = list(program)
         self._mem: _Memory = None
         self._pc: int = None
         self._relative_base: int = None
-        self._get_input_fn: Callable[[], int] = None
-        self._send_output_fn: Callable[[int], None] = None
 
     def run(
         self,
@@ -51,7 +53,7 @@ class IntcodeComputer:
         Input and output are performed via the given functions (or stdin/stdout
         if unspecified).
         """
-        self._mem = _Memory(self._ORIGINAL_PROGRAM)
+        self._mem = _Memory(self._original_program)
         self._pc = 0
         self._relative_base = 0
 
@@ -60,23 +62,28 @@ class IntcodeComputer:
         if verb is not None:
             self._mem[2] = verb
 
+        # Default to stdio
         def get_input() -> int:
             return int(input("> "))
         def send_output(val: int) -> None:
             print(val)
-        self._get_input_fn = get_input_fn or get_input
-        self._send_output_fn = send_output_fn or send_output
+        get_input_fn = get_input_fn or get_input
+        send_output_fn = send_output_fn or send_output
 
         # Run until halted.
         try:
             while True:
-                self._step()
+                self._step(get_input_fn, send_output_fn)
         except _ProgramHalt:
             pass
 
         return self._mem[0]
 
-    def _step(self) -> None:
+    def _step(
+        self,
+        get_input_fn: Callable[[], int],
+        send_output_fn: Callable[[int], None],
+    ) -> None:
         """
         Execute one instruction and update the program counter.
         Throw _ProgramHalt if it was a halt instruction.
@@ -95,10 +102,10 @@ class IntcodeComputer:
             self._mem[target_pos] = val1 * val2
         elif opcode == Instr.INPUT.opcode:
             target_pos, = self._consume_args(Instr.INPUT, param_modes)
-            self._mem[target_pos] = self._get_input_fn()
+            self._mem[target_pos] = get_input_fn()
         elif opcode == Instr.OUTPUT.opcode:
             val, = self._consume_args(Instr.OUTPUT, param_modes)
-            self._send_output_fn(val)
+            send_output_fn(val)
         elif opcode == Instr.JUMP_IF_TRUE.opcode:
             condition, target_instr = self._consume_args(Instr.JUMP_IF_TRUE, param_modes)
             if condition != 0:
@@ -120,7 +127,11 @@ class IntcodeComputer:
             print("Unexpected opcode:", opcode)
             assert False
 
-    def _consume_args(self, instr: Instruction, param_modes: int) -> List[int]:
+    def _consume_args(
+        self,
+        instruction: Instruction,
+        param_mode_flags: int,
+    ) -> List[int]:
         """
         Consume the instruction's parameters; deferencing as necessary
         according to the parameter mode flags (as described in the spec, in
@@ -130,27 +141,31 @@ class IntcodeComputer:
         the next instruction.
         """
         # Consume params; some may be dereferenced before returning, depending
-        # on param_modes. (Update the program counter!)
-        num_params = len(instr.param_types)
+        # on param_mode_flags. (Update the program counter!)
+        num_params = len(instruction.param_types)
         params = self._mem[self._pc + 1 : self._pc + 1 + num_params]
         self._pc += 1 + num_params
 
-        # Handle param_modes.
         vals = []
-        for param_type, param in zip(instr.param_types, params):
-            mode = param_modes % 10
+
+        # Handle param_mode_flags.
+        for param_type, param in zip(instruction.param_types, params):
+            mode = param_mode_flags % 10
+            param_mode_flags //= 10
 
             # Immediate mode
             if mode == 1:
-                # Write-params are never in immediate mode.
-                assert param_type == "r"
+                assert param_type != "w"
                 val = param
+
             # Position mode / relative mode
-            # Read-params are dereferenced; write params are not.
             else:
                 assert mode in (0, 2)
+
                 # In relative mode, the address is relative to the r.b.
                 base = self._relative_base if mode == 2 else 0
+
+                # Read-params are dereferenced; write params are not.
                 if param_type == "r":
                     val = self._mem[base + param]
                 else:
@@ -158,12 +173,18 @@ class IntcodeComputer:
                     val = base + param
 
             vals.append(val)
-            param_modes //= 10
-        assert param_modes == 0
+
+        assert param_mode_flags == 0
         return vals
 
 class _Memory(list):
-    """List[int] wrapper that extends and fills with zeros as neccessary."""
+    """
+    List[int] wrapper that extends and fills with zeros as neccessary.
+
+    This simulates an "infinite" list, all initialized to zero. I.e.,
+    infinite memory.
+    """
+
     def __init__(self, program: Iterable[int]):
         super().__init__(program)
 
@@ -176,18 +197,16 @@ class _Memory(list):
     def __getitem__(self, address: Union[int, slice]) -> int:
         if isinstance(address, int):
             assert address >= 0
-            if address >= len(self):
-                self._extend(address + 1)
+            self._extend(address + 1)
         elif isinstance(address, slice):
             # (I'll implement the general case if/when the time comes...)
             assert address.step is None or address.step > 0
+            self._extend(address.stop)
 
-            if address.stop - 1 >= len(self):
-                self._extend(address.stop)
         return super().__getitem__(address)
 
     def __setitem__(self, address: int, value: int) -> None:
         assert address >= 0
-        if address >= len(self):
-            self._extend(address + 1)
+        self._extend(address + 1)
+
         super().__setitem__(address, value)
