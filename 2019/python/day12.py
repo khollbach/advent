@@ -40,20 +40,36 @@ def part1(moons: List[Moon]) -> None:
     print(f"total energy: {system_energy(moons)}")
 
 def part2(moons: List[Moon]) -> None:
-    print("TODO")
+    # Idea: binary search ??
+    # -> this would require being able to compute the following function:
+    #       f(time_step) => state_the_universe
+    # Which reaonably might be doable.
+    # TODO: think about ways to do this.
+    pass
 
 def part2_naive(moons: List[Moon]) -> None:
     """Just checking that we do indeed have to think of something clever..."""
     seen = set()
 
+    min_pos = 0
+    max_pos = 0
+    min_vel = 0
+    max_vel = 0
+
     i = 0
     while True:
         if i % 100000 == 0:  # Can do 2M pretty quick, but it's not enough.
-            print(i)
+            # These reach -2290 2183 -111 111 within the first 100,000 steps.
+            print(i, min_pos, max_pos, min_vel, max_vel)
+        # Update mins and maxes.
+        for m in moons:
+            min_pos = min(min_pos, min(m.pos))
+            max_pos = max(max_pos, max(m.pos))
+            min_vel = min(min_vel, min(m.vel))
+            max_vel = max(max_vel, max(m.vel))
 
         # Check if this is a repeated state, and otherwise record this state.
-        a, b, c, d = moons
-        t = (a, b, c, d)
+        t = tuple(moons)
         if t in seen:
             print(i)
             return
