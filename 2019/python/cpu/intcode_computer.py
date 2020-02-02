@@ -1,10 +1,9 @@
 from typing import List, Iterable, Optional, Callable, Generator, Union
-from enum import Enum
 from collections import namedtuple
 
 Instruction = namedtuple("Instruction", "opcode, param_types")
 
-class Instr:
+class _Instr:
     ADD = Instruction(1, "rrw")
     MUL = Instruction(2, "rrw")
     INPUT = Instruction(3, "w")
@@ -43,8 +42,8 @@ class IntcodeComputer:
         send_output_fn: Optional[Callable[[int], None]] = None,
     ) -> int:
         """
-        Initialize memory, and reset the program counter; then run the program
-        to completion.
+        Initialize memory, and reset the program counter and the relative base;
+        then run the program to completion.
 
         This method optionally accepts a noun and a verb, which (if specified)
         are copied to memory addresses 1 and 2 respectively before running. The
@@ -91,37 +90,37 @@ class IntcodeComputer:
         opcode = self._mem[self._pc] % 100  # Two right-most digits.
         param_modes = self._mem[self._pc] // 100  # Leading digits.
 
-        if opcode == Instr.HALT.opcode:
-            () = self._consume_args(Instr.HALT, param_modes)
+        if opcode == _Instr.HALT.opcode:
+            () = self._consume_args(_Instr.HALT, param_modes)
             raise _ProgramHalt
-        elif opcode == Instr.ADD.opcode:
-            val1, val2, target_pos = self._consume_args(Instr.ADD, param_modes)
+        elif opcode == _Instr.ADD.opcode:
+            val1, val2, target_pos = self._consume_args(_Instr.ADD, param_modes)
             self._mem[target_pos] = val1 + val2
-        elif opcode == Instr.MUL.opcode:
-            val1, val2, target_pos = self._consume_args(Instr.MUL, param_modes)
+        elif opcode == _Instr.MUL.opcode:
+            val1, val2, target_pos = self._consume_args(_Instr.MUL, param_modes)
             self._mem[target_pos] = val1 * val2
-        elif opcode == Instr.INPUT.opcode:
-            target_pos, = self._consume_args(Instr.INPUT, param_modes)
+        elif opcode == _Instr.INPUT.opcode:
+            target_pos, = self._consume_args(_Instr.INPUT, param_modes)
             self._mem[target_pos] = get_input_fn()
-        elif opcode == Instr.OUTPUT.opcode:
-            val, = self._consume_args(Instr.OUTPUT, param_modes)
+        elif opcode == _Instr.OUTPUT.opcode:
+            val, = self._consume_args(_Instr.OUTPUT, param_modes)
             send_output_fn(val)
-        elif opcode == Instr.JUMP_IF_TRUE.opcode:
-            condition, target_instr = self._consume_args(Instr.JUMP_IF_TRUE, param_modes)
+        elif opcode == _Instr.JUMP_IF_TRUE.opcode:
+            condition, target_instr = self._consume_args(_Instr.JUMP_IF_TRUE, param_modes)
             if condition != 0:
                 self._pc = target_instr
-        elif opcode == Instr.JUMP_IF_FALSE.opcode:
-            condition, target_instr = self._consume_args(Instr.JUMP_IF_FALSE, param_modes)
+        elif opcode == _Instr.JUMP_IF_FALSE.opcode:
+            condition, target_instr = self._consume_args(_Instr.JUMP_IF_FALSE, param_modes)
             if condition == 0:
                 self._pc = target_instr
-        elif opcode == Instr.LT.opcode:
-            val1, val2, target_pos = self._consume_args(Instr.LT, param_modes)
+        elif opcode == _Instr.LT.opcode:
+            val1, val2, target_pos = self._consume_args(_Instr.LT, param_modes)
             self._mem[target_pos] = int(val1 < val2)
-        elif opcode == Instr.EQ.opcode:
-            val1, val2, target_pos = self._consume_args(Instr.EQ, param_modes)
+        elif opcode == _Instr.EQ.opcode:
+            val1, val2, target_pos = self._consume_args(_Instr.EQ, param_modes)
             self._mem[target_pos] = int(val1 == val2)
-        elif opcode == Instr.ADJUST_RB.opcode:
-            val, = self._consume_args(Instr.ADJUST_RB, param_modes)
+        elif opcode == _Instr.ADJUST_RB.opcode:
+            val, = self._consume_args(_Instr.ADJUST_RB, param_modes)
             self._relative_base += val
         else:
             print("Unexpected opcode:", opcode)
