@@ -215,11 +215,15 @@ from enum import Enum
 from typing import List, Dict, Tuple, Set, Deque
 
 def main():
-  for input_ in (input_0, input_1, input_2, input_3):
-    board = Map(input_)
-    print(board)
-    print(board.reachable_keys())
-    print(board.best_route())
+  # for input_ in input_0, input_1, input_2, input_3:
+    # board = Map(input_)
+    # print(board)
+    # #print(board.reachable_keys())
+    # print(board.best_route())
+  input_ = kevan_input
+  board = Map(input_)
+  print(board)
+  print(board.best_route())
 
 class Tile(Enum):
   wall = 0
@@ -319,8 +323,6 @@ class Map:
     - convert key-set to bit-mask
     - memoize based on (bitmask, curr_pos)
     '''
-    # print(self.collected_keys)
-    # print('   ', self.current)
     k = (self.keys_to_bitmask(self.collected_keys), tuple(self.current))
     if k in self.memo:
       return self.memo[k]
@@ -328,20 +330,21 @@ class Map:
     if len(self.collected_keys) == len(self.keys):
       return 0
 
-    current = self.current
-
     best_dist = 2**60
     for i, reachable_keys in enumerate(self.reachable_keys()):
       for pos, dist in reachable_keys:
         key = self.keys[pos]
+        original_pos = self.current[i]
         self.collected_keys.add(key)
 
-        self.current = current
         self.current[i] = pos
-
         total_dist = dist + self.best_route()
         best_dist = min(best_dist, total_dist)
+        #print(key, self.collected_keys)
+        #print("dist:", best_dist)
+
         self.collected_keys.remove(key)
+        self.current[i] = original_pos
     self.memo[k] = best_dist
     return best_dist
 
