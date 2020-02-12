@@ -212,200 +212,197 @@ import string
 
 from collections import deque
 from enum import Enum
-from typing import List, Dict, Tuple, Set, Deque
+from typing import List, Dict, Tuple, Set, Deque, Iterator
 
 def main():
-  # for input_ in input_0, input_1, input_2, input_3:
-    # board = Map(input_)
-    # print(board)
-    # #print(board.reachable_keys())
-    # print(board.best_route())
-  input_ = kevan_input
-  board = Map(input_)
-  print(board)
-  print(board.best_route())
+    for input_str in input_0, input_1, input_2, input_3, kevan_input:
+        m = Map(input_str)
+        print(m)
+        print(list(m.reachable_keys()))
+        print(m.best_route())
 
 class Tile(Enum):
-  wall = 0
-  floor = 1
-  key = 2
-  door = 3
+    wall = 0
+    floor = 1
+    key = 2
+    door = 3
 
-  @classmethod
-  def new(cls, c: str): # -> Tile:
-    if c == "#":
-      return Tile.wall
-    elif c == "." or c == "@":
-      return Tile.floor
-    elif c.islower():
-      return Tile.key
-    elif c.isupper():
-      return Tile.door
-    else:
-      assert False
+    @classmethod
+    def new(cls, c: str): # -> Tile:
+        if c == '#':
+            return Tile.wall
+        elif c == '.':
+            return Tile.floor
+        elif c.islower():
+            return Tile.key
+        elif c.isupper():
+            return Tile.door
+        else:
+            assert False
 
-  def __str__(self) -> str:
-    if self == Tile.wall:
-      return "#"
-    elif self == Tile.floor:
-      return "."
-    elif self == Tile.key:
-      return "$"
-    elif self == Tile.door:
-      return ">"
-    else:
-      assert False
+    def __str__(self) -> str:
+        if self == Tile.wall:
+            return '#'
+        elif self == Tile.floor:
+            return '.'
+        elif self == Tile.key:
+            return '$'
+        elif self == Tile.door:
+            return '>'
+        else:
+            assert False
 
-Point = Tuple[int, int]
+Position = Tuple[int, int]
 
 class Map:
-  def __init__(self, input_str: str):
-    self.height: int = None
-    self.width: int = None
-    self.grid: Dict[Point, Tile] = {}
-    self.keys: Dict[Point, str] = {}
-    self.doors: Dict[Point, str] = {}
-    self.current: List[Point] = []
-    self.collected_keys: Set[str] = set()
+    def __init__(self, input_str: str):
+        self.grid: List[List[Tile]] = []
+        self.keys: Dict[Position, str] = {}
+        self.doors: Dict[Position, str] = {}
+        self.robots: List[Position] = []
+        self.collected_keys: Set[str] = set()
 
-    self.populate_grid(input_str)
+        self._populate_grid(input_str)
 
-    self.memo = {}
+        self.memo = {}
 
-  def populate_grid(self, input_str: str) -> None:
-    '''Populate self.grid (and self.keys/doors), and set self.current'''
-    current = None
-    rows = input_str.split()
-    self.height = len(rows)
-    for i, row in enumerate(rows):
-      self.width = len(row)
-      for j, char in enumerate(row):
-        if char == "@":
-          current = (i,j)
+    def _populate_grid(self, input_str: str) -> None:
+        '''Populate self.{grid, keys, doors, robots}'''
+        starting_pos = None
+        lines = input_str.rstrip('\n').split('\n')
+        for i, line in enumerate(lines):
+            self.grid.append([])
+            for j, char in enumerate(line):
+                if char == '@':
+                    starting_pos = (i,j)
+                    char = '.'
 
-        self.grid[(i,j)] = Tile.new(char)
-        if self.grid[(i,j)] == Tile.key:
-          self.keys[(i,j)] = char
-        elif self.grid[(i,j)] == Tile.door:
-          self.doors[(i,j)] = char
+                self.grid[-1].append(Tile.new(char))
 
-    row, col = current
-    self.grid[(row, col)] = Tile.wall
-    self.grid[(row+1, col)] = Tile.wall
-    self.grid[(row-1, col)] = Tile.wall
-    self.grid[(row, col+1)] = Tile.wall
-    self.grid[(row, col-1)] = Tile.wall
-    self.current = [(row-1, col-1), (row-1, col+1), (row+1, col-1), (row+1, col+1)]
+                if self.grid[-1][-1] == Tile.key:
+                    self.keys[(i,j)] = char
+                elif self.grid[-1][-1] == Tile.door:
+                    self.doors[(i,j)] = char
 
-  @classmethod
-  def keys_to_bitmask(cls, keys: Set[str]) -> int:
-    '''Convert a set of [a-z] into a bitmask of bitlength <= 26
-    Low-order bits are abc... high order bits are ...xyz'''
-    bitmask = 0
-    for offset, char in enumerate(string.ascii_lowercase):
-      if char in keys:
-        bitmask |= 1 << offset
-    return bitmask
+        i, j = starting_pos
+        for di, dj in [(-1,0), (0,0), (1,0), (0,-1), (0,1)]:
+            self.grid[i+di][j+dj] = Tile.wall
+        self.robots = [(i+di,j+dj) for di in (-1,1) for dj in (-1,1)]
 
-  def best_route(self) -> int:
-    '''Return the length of the best path through the maze
-    that collects all keys!
+    def __str__(self) -> str:
+        def to_str(pos: Position, tile: Tile) -> str:
+            if pos in self.robots:
+                return '@'
+            elif pos in self.keys:
+                return self.keys[pos]
+            elif pos in self.doors:
+                return self.doors[pos]
+            else:
+                return str(tile)
 
-    - find reachable keys
-    - for each, go pick up that key and then
-      recursively find the best route from that state.
-    - of all of these, return the best:
-      distance to that key PLUS best_route from that key
-    - (memoize "best_route", based on set of collected keys
-       together with current position)
+        return '\n'.join(
+            ''.join(to_str((i,j), tile) for j, tile in enumerate(row))
+            for i, row in enumerate(self.grid)
+        ) + '\n'
 
-    todo:
-    - convert key-set to bit-mask
-    - memoize based on (bitmask, curr_pos)
-    '''
-    k = (self.keys_to_bitmask(self.collected_keys), tuple(self.current))
-    if k in self.memo:
-      return self.memo[k]
+    def best_route(self) -> int:
+        '''
+        Return the length of the best path through the maze that collects all
+        keys.
 
-    if len(self.collected_keys) == len(self.keys):
-      return 0
+        - find reachable keys
+        - for each, go pick up that key and then
+            recursively find the best route from that state.
+        - of all of these, return the best:
+            distance to that key PLUS best_route from that key
+        - (memoize 'best_route', based on set of collected keys
+             together with current position)
+        '''
+        k = (self.keys_to_bitmask(self.collected_keys), tuple(self.robots))
+        if k in self.memo:
+            return self.memo[k]
 
-    best_dist = 2**60
-    for i, reachable_keys in enumerate(self.reachable_keys()):
-      for pos, dist in reachable_keys:
-        key = self.keys[pos]
-        original_pos = self.current[i]
-        self.collected_keys.add(key)
+        # We win!
+        if len(self.collected_keys) == len(self.keys):
+            return 0
 
-        self.current[i] = pos
-        total_dist = dist + self.best_route()
-        best_dist = min(best_dist, total_dist)
-        #print(key, self.collected_keys)
-        #print("dist:", best_dist)
+        best_dist = 2**62  # Plus infinity.
 
-        self.collected_keys.remove(key)
-        self.current[i] = original_pos
-    self.memo[k] = best_dist
-    return best_dist
+        # For each robot.
+        for i, reachable_keys in enumerate(self.reachable_keys()):
+            # For each reachable key.
+            for pos, dist in reachable_keys:
+                key = self.keys[pos]
+                original_pos = self.robots[i]
 
-  def kd(self, key: str) -> str:
-    return key.upper()
+                # Go collect the key.
+                self.collected_keys.add(key)
+                self.robots[i] = pos
 
-  def dk(self, door: str) -> str:
-    return door.lower()
+                # Recurse.
+                total_dist = dist + self.best_route()
+                best_dist = min(best_dist, total_dist)
 
-  def __str__(self) -> None:
-    str_rep = ""
-    for row in range(self.height):
-      for col in range(self.width):
-        if (row, col) in self.current:
-          str_rep += '@'
-        elif (row, col) in self.keys:
-          str_rep += self.keys[(row, col)]
-        elif (row, col) in self.doors:
-          str_rep += self.doors[(row, col)]
-        else:
-          str_rep += str(self.grid[(row,col)])
-      str_rep += '\n'
-    return str_rep
+                # Backtrack and try all other possible decisions.
+                self.collected_keys.remove(key)
+                self.robots[i] = original_pos
 
-  def adjacent(self, cell: Point) -> List[Point]:
-    x, y = cell
-    adj_pts = []
-    if (x, y+1) in self.grid:
-      adj_pts.append((x, y+1))
-    if (x, y-1) in self.grid:
-      adj_pts.append((x, y-1))
-    if (x+1, y) in self.grid:
-      adj_pts.append((x+1, y))
-    if (x-1, y) in self.grid:
-      adj_pts.append((x-1, y))
-    return adj_pts
+        self.memo[k] = best_dist
+        return best_dist
 
-  def reachable_keys(self) -> List[List[Tuple[Point, int]]]:
-    '''Return the list of reachable uncollected keys, together
-    with their shortest-path-distance from the current position.'''
-    reachable = []
+    @classmethod
+    def keys_to_bitmask(cls, keys: Set[str]) -> int:
+        '''Convert a subset of [a-z] into a bitmask of bitlength <= 26.
+        Low-order bits are abc... high order bits are ...xyz.'''
+        bitmask = 0
+        for offset, char in enumerate(string.ascii_lowercase):
+            if char in keys:
+                bitmask |= 1 << offset
+        return bitmask
 
-    for current in self.current:
-      # BFS from self.current[i]
-      part_list = []
-      visited: Set[Point] = set()
-      q: Deque[Tuple[Point, int]] = deque()  # position, distance
-      q.append((current, 0))
-      while q:
-        cell, dist = q.popleft()
-        visited.add(cell)
-        if self.grid[cell] == Tile.key and self.keys[cell] not in self.collected_keys:
-          part_list.append((cell, dist))
-          continue
-        for c in self.adjacent(cell):
-          if c not in visited and self.grid[c] != Tile.wall and \
-              (self.grid[c] != Tile.door or self.dk(self.doors[c]) in self.collected_keys):
-            q.append((c, dist + 1))
-      reachable.append(part_list)
+    def reachable_keys(self) -> Iterator[List[Tuple[Position, int]]]:
+        '''
+        For each robot, return the list of reachable uncollected keys, together
+        with each such key's shortest-path-distance from that robot's position.
+        '''
+        for cur_pos in self.robots:
+            reachable = []
 
-    return reachable
+            # BFS.
+            visited: Set[Position] = set()
+            q: Deque[Tuple[Position, int]] = deque()  # position, distance
+            q.append((cur_pos, 0))
+            while q:
+                pos, dist = q.popleft()
+                visited.add(pos)
+
+                i, j = pos
+                if self.grid[i][j] == Tile.key and \
+                    self.keys[pos] not in self.collected_keys:
+
+                    # Pick up the key, but don't pass through it. This is an
+                    # optimization which I'm too lazy to explain here.
+                    reachable.append((pos, dist))
+                    continue
+
+                for pos2 in self.adjacent(pos):
+                    x, y = pos2
+                    if pos2 not in visited and \
+                        self.grid[x][y] != Tile.wall and \
+                        (self.grid[x][y] != Tile.door or \
+                            self.doors[pos2].lower() in self.collected_keys):
+
+                        q.append((pos2, dist + 1))
+
+            yield reachable
+
+    def adjacent(self, pos: Position) -> Iterator[Position]:
+        '''Doesn't check bounds!!'''
+        i, j = pos
+        for di in -1, 1:
+            yield (i+di, j)
+        for dj in -1, 1:
+            yield (i, j+dj)
 
 if __name__ == '__main__':
-  main()
+    main()
