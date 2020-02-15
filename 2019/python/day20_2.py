@@ -189,17 +189,17 @@ def portal_dir(lines: List[str], x: int, y: int) -> Dir:
 
 def read_grid(
     input_str: str
-) -> (
+) -> Tuple[
     List[List[Tile]],  # grid
     Dict[Point, Tuple[Point, Dir]],  # portals
     Point,  # start
     Point,  # end
-):
+]:
     lines = input_str.rstrip("\n").split("\n")
 
     grid = []
-    labels = {}  # E.g., {"AB": (x1,y1)}
-    portals = {}  # E.g., {(x1,y1): (x2,y2), (x2,y2): (x1,y1)}
+    labels: Dict[str, Point] = {}  # E.g., {"AB": (x1,y1)}
+    portals: Dict[Point, Tuple[Point, Dir]] = {}  # E.g., {(x1,y1): (x2,y2), (x2,y2): (x1,y1)}
 
     for i, line in enumerate(lines):
         row = []
@@ -228,11 +228,11 @@ def read_grid(
 
 def process_label(
     lines: List[str], i: int, j: int
-) -> (
+) -> Tuple[
     str,  # label
     int,  # portal x
     int,  # portal y
-):
+]:
     r"""
     Example:
       A<-- this one is (i, j)

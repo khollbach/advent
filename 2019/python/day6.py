@@ -12,11 +12,13 @@ class Node:
         self.parent = None
         self.children = set()
 
-def read_tree_from_stdin() -> Tuple[Node, Set[Node]]:
+def read_tree_from_stdin() -> Tuple[Node, Dict[str, Node]]:
     nodes: Dict[str, Node] = {}
     pattern = re.compile(r"(\w+)\)(\w+)")
     for line in sys.stdin:
-        parent, child = re.match(pattern, line).groups()
+        match = re.match(pattern, line)
+        assert match
+        parent, child = match.groups()
         if parent not in nodes:
             nodes[parent] = Node(parent)
         if child not in nodes:
@@ -34,12 +36,15 @@ def depth_sum(tree: Node, depth: int = 0) -> int:
         total += depth_sum(c, depth + 1)
     return total
 
-def depth(node: Node) -> int:
-    if not node.parent:
-        return 0
+def depth(node: Optional[Node]) -> int:
+    if not node:
+        return -1
     return 1 + depth(node.parent)
 
-def lowest_common_ancestor(node1: Node, node2: Node) -> Node:
+def lowest_common_ancestor(
+    node1: Optional[Node],
+    node2: Optional[Node],
+) -> Optional[Node]:
     d1 = depth(node1)
     d2 = depth(node2)
 
@@ -50,11 +55,13 @@ def lowest_common_ancestor(node1: Node, node2: Node) -> Node:
 
     # Walk node2 up to the same level of depth as node1.
     while d2 != d1:
+        assert node2
         node2 = node2.parent
         d2 -= 1
 
     # Walk both nodes up in sync until they meet!
     while node1 != node2:
+        assert node1 and node2
         node1 = node1.parent
         node2 = node2.parent
 

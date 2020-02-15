@@ -1,19 +1,18 @@
-from io import TextIOBase
-from typing import List, Tuple, Generator, Set, Dict
+from typing import List, Tuple, Generator, Set, Dict, TextIO
 from collections import defaultdict, namedtuple
 from itertools import islice
 
 import sys, re, doctest
 
-Point = namedtuple("Point", "x y")
-def _add_points(self: Point, other: Point) -> Point:
-    return Point(self.x + other.x, self.y + other.y)
-Point.__add__ = _add_points
+class Point(namedtuple("Point", "x y")):
+    def __add__(self: "Point", other: "Point") -> "Point":  # type: ignore
+        return Point(self.x + other.x, self.y + other.y)
+
 ORIGIN = Point(0, 0)
 
 Wire = List[Point]  # Ordered list of deltas from the origin.
 
-def read_wire(input_stream: TextIOBase) -> Wire:
+def read_wire(input_stream: TextIO) -> Wire:
     """Read and parse a wire, which is described by a list of directions."""
     line = input_stream.readline()
     directions = re.findall(r"([UDLR]\d+),?", line)
@@ -37,7 +36,7 @@ def wire_to_points(wire: Wire) -> Dict[Point, int]:
     Those points are the keys of a dictionary whose values are the distance the
     wire travelled to get to that point.
     """
-    points = {}
+    points: Dict[Point, int] = {}
     distance_travelled = 0
     pos = ORIGIN
     for delta in wire:

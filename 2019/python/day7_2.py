@@ -11,7 +11,7 @@ def get_thruster_signal(program: List[int], settings: List[int]) -> int:
 
     # queues[i] is a message buffer for the inputs to amplifier i, which come
     # from the outputs of amplifier i - 1 (mod num_amps).
-    queues = [Queue() for i in range(num_amps)]
+    queues: List[Queue] = [Queue() for i in range(num_amps)]
     for i, q in enumerate(queues):
         q.put(settings[i])
 

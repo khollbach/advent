@@ -1,4 +1,4 @@
-from typing import List, Set, Tuple, Optional
+from typing import List, Set, Tuple, Optional, Any
 import fileinput, math, copy, doctest
 
 Point = Tuple[int, int]
@@ -87,7 +87,7 @@ def get_visible_slopes(asteroids: Set[Point], p: Point) -> Set[Point]:
             slopes.add(reduce_slope(x2 - x, y2 - y))
     return slopes
 
-def reduce_slope(di: int, dj: int) -> (int, int):
+def reduce_slope(di: int, dj: int) -> Tuple[int, int]:
     """Reduce a fraction to its lowest terms, without cancelling signs.
 
     >>> reduce_slope(0, 2)
@@ -144,7 +144,9 @@ def first_visible_asteroid(
         x += dx
         y += dy
 
-def slope_sort_key(slope: Point) -> bool:
+    return None
+
+def slope_sort_key(slope: Point) -> Tuple[Any, ...]:
     """Sort order: slopes of +\infty down to (but not including) -\infty on the
     right half of the plane, then the same on the left half."""
     dx, dy = slope
@@ -152,10 +154,10 @@ def slope_sort_key(slope: Point) -> bool:
 
     is_infty: bool = dx == 0
     left_half: bool = dx < 0 or is_infty and dy < 0
-    slope: float = dy / dx if not is_infty else 0.0
+    slope_ratio: float = dy / dx if not is_infty else 0.0
 
     # right before left; infty before finite; positive slopes before negative.
-    return (left_half, not is_infty, -1 * slope)
+    return (left_half, not is_infty, -1 * slope_ratio)
 
 if __name__ == "__main__":
     doctest.testmod()

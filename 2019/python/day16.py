@@ -1,7 +1,7 @@
-from typing import List
+from typing import List, Iterator
 import fileinput
 
-class Repeater:
+class Repeater(Iterator):
     """Iterator that outputs each list element n times consecutively, and then
     rinse-and-repeats *FOREVER*."""
     def __init__(self, n: int, l: List[int]):
@@ -26,13 +26,6 @@ class Repeater:
 
         return val
 
-class IterWrapper:
-    def __init__(self, iterator):
-        self.iterator = iterator
-
-    def __iter__(self):
-        return self.iterator
-
 def main():
     input_str = "".join(fileinput.input()).rstrip("\n")
     nums = list(map(int, input_str))
@@ -52,7 +45,7 @@ def fft_phase(l: List[int]) -> List[int]:
         pattern = Repeater(i + 1, _base_pattern)
         next(pattern)
 
-        val = sum(a * b for a, b in zip(l, IterWrapper(pattern)))
+        val = sum(a * b for a, b in zip(l, pattern))
         val = abs(val) % 10
         new_l.append(val)
 

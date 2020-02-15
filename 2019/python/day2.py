@@ -1,11 +1,11 @@
 from cpu.intcode_computer import IntcodeComputer
 
-from typing import List, Iterable, Optional
+from typing import List, Iterable, Optional, Tuple
 import sys
 
 def find_correct_inputs(
     program: List[int], target_output: int
-) -> (int, int):
+) -> Tuple[int, int]:
     cpu = IntcodeComputer(program)
     for noun in range(100):
         for verb in range(100):

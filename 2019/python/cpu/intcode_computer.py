@@ -1,5 +1,6 @@
 from typing import List, Iterable, Optional, Callable, Generator, Union
 from collections import namedtuple
+from typing import overload
 
 Instruction = namedtuple("Instruction", "opcode, param_types")
 
@@ -23,16 +24,16 @@ class _ProgramHalt(Exception):
 class IntcodeComputer:
     """An interpreter for Intcode programs."""
 
-    def __init__(self, program: Iterable[int]):
+    def __init__(self, program: Iterable[int]) -> None:
         """
         Create a new IntcodeComputer for running the given program.
 
         The program can be run multiple times using the same IntcodeComputer.
         """
         self._original_program: List[int] = list(program)
-        self._mem: _Memory = None
-        self._pc: int = None
-        self._relative_base: int = None
+        self._mem: _Memory
+        self._pc: int
+        self._relative_base: int
 
     def run(
         self,
@@ -91,7 +92,8 @@ class IntcodeComputer:
         param_modes = self._mem[self._pc] // 100  # Leading digits.
 
         if opcode == _Instr.HALT.opcode:
-            () = self._consume_args(_Instr.HALT, param_modes)
+            # mypy won't let me do this ...
+            () = self._consume_args(_Instr.HALT, param_modes)  # type: ignore
             raise _ProgramHalt
         elif opcode == _Instr.ADD.opcode:
             val1, val2, target_pos = self._consume_args(_Instr.ADD, param_modes)
@@ -184,7 +186,7 @@ class _Memory(list):
     infinite memory.
     """
 
-    def __init__(self, program: Iterable[int]):
+    def __init__(self, program: Iterable[int]) -> None:
         super().__init__(program)
 
     def _extend(self, newlen: int) -> None:
@@ -193,19 +195,27 @@ class _Memory(list):
         if diff > 0:
             self.extend([0] * diff)
 
-    def __getitem__(self, address: Union[int, slice]) -> int:
+    @overload
+    def __getitem__(self, address: int) -> int: ...
+    @overload
+    def __getitem__(self, address: slice) -> List[int]: ...
+    def __getitem__(self, address):
         if isinstance(address, int):
             assert address >= 0
             self._extend(address + 1)
-        elif isinstance(address, slice):
-            # (I'll implement the general case if/when the time comes...)
+            return super().__getitem__(address)
+        else:
+            # I'll implement the general case if/when the time comes...
             assert address.step is None or address.step > 0
             self._extend(address.stop)
+            return super().__getitem__(address)
 
-        return super().__getitem__(address)
-
-    def __setitem__(self, address: int, value: int) -> None:
+    @overload
+    def __setitem__(self, i: int, o: int) -> None: ...
+    @overload
+    def __setitem__(self, s: slice, o: Iterable[int]) -> None: ...
+    def __setitem__(self, address, value) -> None:
+        assert isinstance(address, int)
         assert address >= 0
         self._extend(address + 1)
-
         super().__setitem__(address, value)

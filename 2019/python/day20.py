@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Set
 import doctest, unittest, sys
 
 input_str = """\
@@ -115,7 +115,7 @@ def shortest_path_length(
     end: Point,
 ) -> int:
     queue: List[Tuple[Point, int]] = [(start, 0)]
-    visited = set()
+    visited: Set[Point] = set()
 
     while queue:
         current, dist = queue.pop(0)
@@ -143,17 +143,17 @@ def shortest_path_length(
 
 def read_grid(
     input_str: str
-) -> (
+) -> Tuple[
     List[List[Tile]],  # grid
     Dict[Point, Point],  # portals
     Point,  # start
     Point,  # end
-):
+]:
     lines = input_str.split("\n")
 
     grid = []
-    labels = {}  # E.g., {"AB": (x1,y1)}
-    portals = {}  # E.g., {(x1,y1): (x2,y2), (x2,y2): (x1,y1)}
+    labels: Dict[str, Point] = {}  # E.g., {"AB": (x1,y1)}
+    portals: Dict[Point, Point] = {}  # E.g., {(x1,y1): (x2,y2), (x2,y2): (x1,y1)}
 
     for i, line in enumerate(lines):
         row = []
@@ -186,11 +186,11 @@ def read_grid(
 
 def process_label(
     lines: List[str], i: int, j: int
-) -> (
+) -> Tuple[
     str,  # label
     int,  # portal x
     int,  # portal y
-):
+]:
     r"""
     Example:
       A<-- this one is (i, j)

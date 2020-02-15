@@ -5,7 +5,7 @@ Image = List[List[List[int]]]
 
 def read_image(img_str: str, HEIGHT: int, WIDTH: int, DEPTH: int) -> Image:
     assert DEPTH * HEIGHT * WIDTH == len(img_str)  # Divides evenly.
-    img = []
+    img: Image = []
     for i in range(DEPTH):
         img.append([])  # layer i
         for j in range(HEIGHT):
@@ -40,7 +40,7 @@ def visible_digit(img: Image, row: int, col: int) -> int:
 def render(img: Image) -> List[List[int]]:
     D, H, W = len(img), len(img[0]), len(img[0][0])
 
-    rendered = []
+    rendered: List[List[int]] = []
     for j in range(H):
         rendered.append([])  # row j
         for k in range(W):

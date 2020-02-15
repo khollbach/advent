@@ -9,10 +9,13 @@ else
 fi
 
 # Intcode computer tests
-for f in cpu/intcode_computer.py cpu/test_intcode_computer.py; do
+cd cpu
+for f in intcode_computer.py test_intcode_computer.py; do
     echo "    *** $f: ***"
+    mypy "$f" || exit 1
     pypy3 "$f" || exit 1
 done
+cd - >/dev/null
 
 # Daily problems
 for i in $(seq 1 $problem_number); do

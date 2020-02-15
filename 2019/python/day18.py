@@ -264,11 +264,11 @@ class Map:
 
         self._populate_grid(input_str)
 
-        self.memo = {}
+        self.memo: Dict[Tuple[int, Tuple[Position, ...]], int] = {}
 
     def _populate_grid(self, input_str: str) -> None:
         '''Populate self.{grid, keys, doors, robots}'''
-        starting_pos = None
+        starting_pos: Tuple[int, int]
         lines = input_str.rstrip('\n').split('\n')
         for i, line in enumerate(lines):
             self.grid.append([])
