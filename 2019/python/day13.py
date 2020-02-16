@@ -1,8 +1,32 @@
 from cpu.intcode_computer import IntcodeComputer
 
-import sys
 from typing import List, Tuple, Dict
 from enum import Enum
+
+import sys
+
+def main():
+    prog = list(map(int, next(sys.stdin).split(',')))
+    part1(prog)
+    part2(prog)
+
+def part1(program: List[int]) -> None:
+    screen = ArcadeScreen()
+
+    cpu = IntcodeComputer(program)
+    cpu.run(send_output_fn=screen.get_input)
+
+    screen.draw()
+
+def part2(program: List[int]) -> None:
+    screen = ArcadeScreen()
+
+    # Feed in two quarters.
+    program[0] = 2
+    cpu = IntcodeComputer(program)
+
+    # TODO
+    #cpu.run(send_output_fn=screen.get_input, get_input_fn=???)
 
 class Tile(Enum):
     empty = 0
@@ -57,16 +81,6 @@ class ArcadeScreen:
                     num_blocks += 1
             print()
         print('num blocks:', num_blocks)
-
-def main():
-    prog = list(map(int, next(sys.stdin).split(',')))
-
-    screen = ArcadeScreen()
-
-    cpu = IntcodeComputer(prog)
-    cpu.run(send_output_fn=screen.get_input)
-
-    screen.draw()
 
 if __name__ == "__main__":
     main()
