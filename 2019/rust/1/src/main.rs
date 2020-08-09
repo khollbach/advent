@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::error::Error;
 use std::io::{self, prelude::*};
 
@@ -25,7 +26,23 @@ fn fuel_required(mass: u32) -> u32 {
     }
 }
 
-fn fuel_required_recursive(mass: u32) -> u32 {
+fn fuel_required_recursive(mut mass: u32) -> u32 {
+    let mut fuel = 0;
+
+    loop {
+        let f = fuel_required(mass);
+        if f == 0 {
+            break;
+        } else {
+            fuel += f;
+            mass = f;
+        }
+    }
+
+    fuel
+}
+
+fn _fuel_required_recursive(mass: u32) -> u32 {
     // Rust doesn't have tail call optimization though (yet).
     fn helper(mass: u32, acc: u32) -> u32 {
         match fuel_required(mass) {
@@ -37,6 +54,9 @@ fn fuel_required_recursive(mass: u32) -> u32 {
     helper(mass, 0)
 }
 
-fn total_fuel(masses: &[u32], fuel_required: fn(u32) -> u32) -> u32 {
-    masses.iter().map(|&m| fuel_required(m)).sum()
+fn total_fuel<F>(masses: &[u32], fuel_required: F) -> u32
+where
+    F: Fn(u32) -> u32 + Sync,
+{
+    masses.par_iter().map(|&m| fuel_required(m)).sum()
 }
