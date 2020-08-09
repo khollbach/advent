@@ -2,15 +2,30 @@ use std::error::Error;
 use std::io;
 
 fn main() {
-    let mut mem = read_input().unwrap();
+    let mem = read_input().unwrap();
 
-    mem[1] = 12;
-    mem[2] = 2;
+    println!("{}", part1(mem.clone()));
 
-    let cpu = CPU::new(mem);
-    let mem = cpu.run();
+    let (noun, verb) = part2(mem);
+    println!("{}", noun * 100 + verb);
+}
 
-    println!("{}", mem[0]);
+fn part1(mem: Vec<i32>) -> i32 {
+    CPU::new(mem).run(12, 2)
+}
+
+fn part2(mem: Vec<i32>) -> (i32, i32) {
+    const TARGET: i32 = 19690720;
+
+    for noun in 0..100 {
+        for verb in 0..100 {
+            if CPU::new(mem.clone()).run(noun, verb) == TARGET {
+                return (noun, verb);
+            }
+        }
+    }
+
+    panic!("No valid noun/verb pair found.");
 }
 
 /// Read the first line of stdin, and parse it as a comma-separated
@@ -43,11 +58,13 @@ impl CPU {
         Self { mem: memory, pc: 0 }
     }
 
-    /// Execute instructions until a HALT.
-    /// Consumes the CPU and gives back ownership of the memory vector.
-    fn run(mut self) -> Vec<i32> {
+    /// Execute instructions until a HALT. Consumes the CPU.
+    /// Arguments and return values are described in Day 2.
+    fn run(mut self, noun: i32, verb: i32) -> i32 {
+        self.mem[1] = noun;
+        self.mem[2] = verb;
         while self.step() {}
-        self.mem
+        self.mem[0]
     }
 
     /// Execute one instruction and update the program counter.
