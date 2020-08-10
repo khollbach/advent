@@ -10,8 +10,8 @@
 //
 // 1:30 (+20) wrote part 2 (similar idea, but with maps instead of sets).
 
+use common::read_line;
 use std::collections::HashMap;
-use std::io;
 
 fn main() {
     let wire1 = read_wire();
@@ -94,17 +94,4 @@ fn read_wire() -> Wire {
     }
 
     map
-}
-
-/// Read a line from stdin. Strip any trailing newline.
-fn read_line() -> io::Result<String> {
-    let mut buf = String::new();
-    io::stdin().read_line(&mut buf)?;
-
-    // Strip newline.
-    if buf.chars().last() == Some('\n') {
-        buf.pop();
-    }
-
-    Ok(buf)
 }
