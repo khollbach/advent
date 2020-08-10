@@ -4,71 +4,96 @@
 // N spots in the second wire, even though we only store the corners of the first wire. So we use
 // the first solution, which is much simpler.
 //
-// 1 hour writing and re-writing/re-factoring/re-organizing the read_wire logic.
+// 1:00 hour writing and re-writing/re-factoring/re-organizing the read_wire logic.
 //
-// 10 minutes writing part 1 (simple set-intersection idea).
+// 1:10 (+10) wrote part 1 (simple set-intersection idea).
+//
+// 1:30 (+20) wrote part 2 (similar idea, but with maps instead of sets).
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::io;
 
 fn main() {
     let wire1 = read_wire();
     let wire2 = read_wire();
+    println!("{}", part1(&wire1, &wire2));
+    println!("{}", part2(&wire1, &wire2));
+}
 
-    let intersections = wire1.into_iter().filter(|p| wire2.contains(&p));
+type Wire = HashMap<(i32, i32), u32>;
+
+fn part1(wire1: &Wire, wire2: &Wire) -> i32 {
+    let intersections = wire1.keys().filter(|p| wire2.contains_key(p));
 
     let dist_to_closest = intersections
-        .map(|(x, y)| x.abs() + y.abs())
+        .map(|&(x, y)| x.abs() + y.abs())
         .min()
         .expect("No intersections.");
 
-    println!("{}", dist_to_closest);
+    dist_to_closest
 }
 
-/// Return the set of points this wire covers, but not including the origin.
-fn read_wire() -> HashSet<(i32, i32)> {
-    let mut set = HashSet::new();
+fn part2(wire1: &Wire, wire2: &Wire) -> u32 {
+    let intersections = wire1.keys().filter(|p| wire2.contains_key(p));
+
+    let min_total_dist = intersections
+        .map(|p| wire1[p] + wire2[p])
+        .min()
+        .expect("No intersections.");
+
+    min_total_dist
+}
+
+/// Return the set of points this wire covers, but not including the origin. Each point has the
+/// corresponding distance travelled to reach it (for the first time).
+fn read_wire() -> Wire {
+    let mut map = HashMap::new();
 
     // Start at the origin.
     let mut x = 0;
     let mut y = 0;
+    let mut total_dist = 0;
 
     let line = read_line().expect("Failed to read from stdin");
     for section in line.split(',') {
         let dir = section.chars().next().expect("Empty wire section");
         let dist: u32 = section[1..].parse().unwrap();
 
-        // Put all points along the wire section in the set.
+        // Put all points along the wire section in the map.
         match dir {
             'U' => {
                 for _ in 0..dist {
                     y += 1;
-                    set.insert((x, y));
+                    total_dist += 1;
+                    map.insert((x, y), total_dist);
                 }
             }
             'D' => {
                 for _ in 0..dist {
                     y -= 1;
-                    set.insert((x, y));
+                    total_dist += 1;
+                    map.insert((x, y), total_dist);
                 }
             }
             'L' => {
                 for _ in 0..dist {
                     x -= 1;
-                    set.insert((x, y));
+                    total_dist += 1;
+                    map.insert((x, y), total_dist);
                 }
             }
             'R' => {
                 for _ in 0..dist {
                     x += 1;
-                    set.insert((x, y));
+                    total_dist += 1;
+                    map.insert((x, y), total_dist);
                 }
             }
             c => panic!("Invalid direction: {}", c),
         }
     }
 
-    set
+    map
 }
 
 /// Read a line from stdin. Strip any trailing newline.
