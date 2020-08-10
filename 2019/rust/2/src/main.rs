@@ -1,9 +1,8 @@
+use cpu::misc::read_mem;
 use cpu::CPU;
-use std::error::Error;
-use std::io;
 
 fn main() {
-    let mem = read_input().unwrap();
+    let mem = read_mem().unwrap();
 
     println!("{}", part1(mem.clone()));
 
@@ -27,17 +26,4 @@ fn part2(mem: Vec<i32>) -> (i32, i32) {
     }
 
     panic!("No valid noun/verb pair found.");
-}
-
-/// Read the first line of stdin, and parse it as a comma-separated
-/// list of integers: e.g. `1,2,-54,0`.
-fn read_input() -> Result<Vec<i32>, Box<dyn Error>> {
-    let mut line = String::new();
-    io::stdin().read_line(&mut line)?;
-
-    let mut vec = vec![];
-    for word in line.trim_end_matches('\n').split(',') {
-        vec.push(word.parse()?);
-    }
-    Ok(vec)
 }
