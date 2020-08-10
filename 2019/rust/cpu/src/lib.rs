@@ -1,4 +1,7 @@
+use std::convert::TryFrom;
+
 /// A computer emulator that can run Intcode programs.
+#[derive(Default)]
 pub struct CPU {
     /// The current state of memory.
     mem: Vec<i32>,
@@ -6,20 +9,61 @@ pub struct CPU {
     /// The instruction pointer (aka "program counter"). An
     /// index into `self.mem`. Invariant: `pc < mem.len()`.
     pc: usize,
+
+    /// Program arguments.
+    args: Option<(i32, i32)>,
+
+    /// I/O mechanism.
+    get_input: Option<Box<dyn FnMut() -> i32>>,
+    send_output: Option<Box<dyn FnMut(i32)>>,
 }
 
 impl CPU {
-    /// Create a new intcode computer. `memory` must be non-empty.
+    /// Create a new intcode computer. `memory` must be non-empty. This follows the builder
+    /// pattern; you can supply optional parameters via their corresponding methods.
     pub fn new(memory: Vec<i32>) -> Self {
         assert!(!memory.is_empty());
-        Self { mem: memory, pc: 0 }
+        Self {
+            mem: memory,
+            pc: 0,
+            ..Default::default()
+        }
+    }
+
+    /// Set the arguments to execute with. (Optional!)
+    /// Arguments and return values are described in Day 2.
+    pub fn args(self, noun: i32, verb: i32) -> Self {
+        assert!(self.args.is_none());
+        Self {
+            args: Some((noun, verb)),
+            ..self
+        }
+    }
+
+    /// Set input function. (Optional.) I/O is described in Day 5.
+    pub fn input_fn(self, get_input: Box<dyn FnMut() -> i32>) -> Self {
+        assert!(self.get_input.is_none());
+        Self {
+            get_input: Some(get_input),
+            ..self
+        }
+    }
+
+    /// Set output function. (Optional.) I/O is described in Day 5.
+    pub fn output_fn(self, send_output: Box<dyn FnMut(i32)>) -> Self {
+        assert!(self.send_output.is_none());
+        Self {
+            send_output: Some(send_output),
+            ..self
+        }
     }
 
     /// Execute instructions until a HALT. Consumes the CPU.
-    /// Arguments and return values are described in Day 2.
-    pub fn run(mut self, noun: i32, verb: i32) -> i32 {
-        self.mem[1] = noun;
-        self.mem[2] = verb;
+    pub fn run(mut self) -> i32 {
+        if let Some((noun, verb)) = self.args {
+            self.mem[1] = noun;
+            self.mem[2] = verb;
+        }
         self.run_internal();
         self.mem[0]
     }
@@ -34,18 +78,30 @@ impl CPU {
     fn step(&mut self) -> bool {
         match self.mem[self.pc] {
             1 => {
-                let x = self.mem[self.pc + 1] as usize;
-                let y = self.mem[self.pc + 2] as usize;
-                let z = self.mem[self.pc + 3] as usize;
+                let x = usize::try_from(self.mem[self.pc + 1]).unwrap();
+                let y = usize::try_from(self.mem[self.pc + 2]).unwrap();
+                let z = usize::try_from(self.mem[self.pc + 3]).unwrap();
 
                 self.mem[z] = self.mem[x] + self.mem[y];
             }
             2 => {
-                let x = self.mem[self.pc + 1] as usize;
-                let y = self.mem[self.pc + 2] as usize;
-                let z = self.mem[self.pc + 3] as usize;
+                let x = usize::try_from(self.mem[self.pc + 1]).unwrap();
+                let y = usize::try_from(self.mem[self.pc + 2]).unwrap();
+                let z = usize::try_from(self.mem[self.pc + 3]).unwrap();
 
                 self.mem[z] = self.mem[x] * self.mem[y];
+            }
+            3 => {
+                let x = usize::try_from(self.mem[self.pc + 1]).unwrap();
+
+                let get_input = self.get_input.as_mut().unwrap();
+                self.mem[x] = get_input();
+            }
+            4 => {
+                let x = usize::try_from(self.mem[self.pc + 1]).unwrap();
+
+                let send_output = self.send_output.as_mut().unwrap();
+                send_output(self.mem[x]);
             }
             99 => {
                 return false;

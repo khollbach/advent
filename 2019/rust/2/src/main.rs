@@ -12,7 +12,7 @@ fn main() {
 }
 
 fn part1(mem: Vec<i32>) -> i32 {
-    CPU::new(mem).run(12, 2)
+    CPU::new(mem).args(12, 2).run()
 }
 
 fn part2(mem: Vec<i32>) -> (i32, i32) {
@@ -20,7 +20,7 @@ fn part2(mem: Vec<i32>) -> (i32, i32) {
 
     for noun in 0..100 {
         for verb in 0..100 {
-            if CPU::new(mem.clone()).run(noun, verb) == TARGET {
+            if CPU::new(mem.clone()).args(noun, verb).run() == TARGET {
                 return (noun, verb);
             }
         }
