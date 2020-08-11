@@ -37,6 +37,10 @@ pub enum Operation {
     Multiply,
     GetInput,
     SendOutput,
+    JumpIfTrue,
+    JumpIfFalse,
+    LessThan,
+    Equals,
     Halt,
 }
 
@@ -50,6 +54,10 @@ impl Operation {
             2 => Multiply,
             3 => GetInput,
             4 => SendOutput,
+            5 => JumpIfTrue,
+            6 => JumpIfFalse,
+            7 => LessThan,
+            8 => Equals,
             99 => Halt,
             _ => panic!("Not an operation: {}", code),
         }
@@ -64,6 +72,10 @@ impl Operation {
             Multiply => 2,
             GetInput => 3,
             SendOutput => 4,
+            JumpIfTrue => 5,
+            JumpIfFalse => 6,
+            LessThan => 7,
+            Equals => 8,
             Halt => 99,
         }
     }
@@ -78,7 +90,30 @@ impl Operation {
             Multiply => vec![Read, Read, Write],
             GetInput => vec![Write],
             SendOutput => vec![Read],
+            JumpIfTrue => vec![Read, Read],
+            JumpIfFalse => vec![Read, Read],
+            LessThan => vec![Read, Read, Write],
+            Equals => vec![Read, Read, Write],
             Halt => vec![],
+        }
+    }
+
+    /// Should the program counter be automatically incremented after executing this operation?
+    /// Returns true or false accordingly, but does no mutation.
+    #[must_use]
+    pub fn auto_inc_pc(&self) -> bool {
+        use Operation::*;
+
+        match self {
+            Add => true,
+            Multiply => true,
+            GetInput => true,
+            SendOutput => true,
+            JumpIfTrue => false,
+            JumpIfFalse => false,
+            LessThan => true,
+            Equals => true,
+            Halt => false,
         }
     }
 }
