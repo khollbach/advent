@@ -212,4 +212,162 @@ mod mem_tests {
             vec![30, 1, 1, 4, 2, 5, 6, 0, 99],
         );
     }
+
+    /// This example uses parameter modes.
+    #[test]
+    fn test7() {
+        test_mem(vec![1002, 4, 3, 4, 33], vec![1002, 4, 3, 4, 99]);
+    }
+}
+
+#[cfg(test)]
+mod io_tests {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    use super::*;
+
+    fn test_io(mem: Vec<i32>, input: Vec<i32>, expected_output: Vec<i32>) {
+        let mut input = input.into_iter();
+
+        let actual_output = Rc::new(RefCell::new(vec![]));
+        let output_clone = Rc::clone(&actual_output);
+
+        let mut cpu = CPU::new(mem)
+            .input_fn(move || input.next().unwrap())
+            .output_fn(move |x| output_clone.borrow_mut().push(x));
+        cpu.run_internal();
+
+        assert_eq!(expected_output, *actual_output.borrow());
+    }
+
+    fn test_many(mem: Vec<i32>, io_pairs: Vec<(Vec<i32>, Vec<i32>)>) {
+        for (input, output) in io_pairs {
+            test_io(mem.clone(), input, output);
+        }
+    }
+
+    /// Produces same output as input (a.k.a. "echo").
+    #[test]
+    fn test1() {
+        let mem = vec![3, 0, 4, 0, 99];
+        let io_pairs = vec![
+            (vec![1], vec![1]),
+            (vec![1337], vec![1337]),
+            (vec![0], vec![0]),
+            (vec![-1], vec![-1]),
+            (vec![-1001], vec![-1001]),
+        ];
+
+        test_many(mem, io_pairs);
+    }
+
+    /// Check if input equals 8 (output 1 or 0 accordingly).
+    #[test]
+    fn test2() {
+        let mem = vec![3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8];
+        let io_pairs = vec![
+            (vec![8], vec![1]),
+            (vec![7], vec![0]),
+            (vec![0], vec![0]),
+            (vec![-3], vec![0]),
+            (vec![100], vec![0]),
+        ];
+
+        test_many(mem, io_pairs);
+    }
+
+    /// Same as test2.
+    #[test]
+    fn test3() {
+        let mem = vec![3, 3, 1108, -1, 8, 3, 4, 3, 99];
+        let io_pairs = vec![
+            (vec![8], vec![1]),
+            (vec![7], vec![0]),
+            (vec![0], vec![0]),
+            (vec![-3], vec![0]),
+            (vec![100], vec![0]),
+        ];
+
+        test_many(mem, io_pairs);
+    }
+
+    /// Check if input less than 8 (output 1 or 0 accordingly).
+    #[test]
+    fn test4() {
+        let mem = vec![3, 9, 7, 9, 10, 9, 4, 9, 99, -1, 8];
+        let io_pairs = vec![
+            (vec![8], vec![0]),
+            (vec![7], vec![1]),
+            (vec![0], vec![1]),
+            (vec![-3], vec![1]),
+            (vec![100], vec![0]),
+        ];
+
+        test_many(mem, io_pairs);
+    }
+
+    /// Same as test4.
+    #[test]
+    fn test5() {
+        let mem = vec![3, 3, 1107, -1, 8, 3, 4, 3, 99];
+        let io_pairs = vec![
+            (vec![8], vec![0]),
+            (vec![7], vec![1]),
+            (vec![0], vec![1]),
+            (vec![-3], vec![1]),
+            (vec![100], vec![0]),
+        ];
+
+        test_many(mem, io_pairs);
+    }
+
+    /// Check if input is nonzero.
+    #[test]
+    fn test6() {
+        let mem = vec![3, 12, 6, 12, 15, 1, 13, 14, 13, 4, 13, 99, -1, 0, 1, 9];
+        let io_pairs = vec![
+            (vec![8], vec![1]),
+            (vec![7], vec![1]),
+            (vec![0], vec![0]),
+            (vec![-3], vec![1]),
+            (vec![100], vec![1]),
+        ];
+
+        test_many(mem, io_pairs);
+    }
+
+    /// Same as test6.
+    #[test]
+    fn test7() {
+        let mem = vec![3, 3, 1105, -1, 9, 1101, 0, 0, 12, 4, 12, 99, 1];
+        let io_pairs = vec![
+            (vec![8], vec![1]),
+            (vec![7], vec![1]),
+            (vec![0], vec![0]),
+            (vec![-3], vec![1]),
+            (vec![100], vec![1]),
+        ];
+
+        test_many(mem, io_pairs);
+    }
+
+    /// Output 999/1000/1001 if input is lt/eq/gt the value 8.
+    #[test]
+    fn test8() {
+        let mem = vec![
+            3, 21, 1008, 21, 8, 20, 1005, 20, 22, 107, 8, 21, 20, 1006, 20, 31, 1106, 0, 36, 98, 0,
+            0, 1002, 21, 125, 20, 4, 20, 1105, 1, 46, 104, 999, 1105, 1, 46, 1101, 1000, 1, 20, 4,
+            20, 1105, 1, 46, 98, 99,
+        ];
+        let io_pairs = vec![
+            (vec![8], vec![1000]),
+            (vec![7], vec![999]),
+            (vec![0], vec![999]),
+            (vec![-3], vec![999]),
+            (vec![100], vec![1001]),
+        ];
+
+        test_many(mem, io_pairs);
+    }
 }
