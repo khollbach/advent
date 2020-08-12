@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{self, prelude::*};
 use std::rc::Rc;
-use tree::Tree;
+use tree::{Node, Tree};
 
 mod tree;
 
@@ -51,7 +51,7 @@ fn distance(node1: Tree, node2: Tree) -> u32 {
 
     // Go up from node2 until they're at the same depth.
     while d1 < d2 {
-        let tmp = node2.borrow().parent().unwrap();
+        let tmp = node2.borrow().parent.upgrade().unwrap();
         node2 = tmp;
 
         total_distance += 1;
@@ -60,10 +60,10 @@ fn distance(node1: Tree, node2: Tree) -> u32 {
 
     // Move both pointers up until they meet.
     while node1 != node2 {
-        let tmp = node1.borrow().parent().unwrap();
+        let tmp = node1.borrow().parent.upgrade().unwrap();
         node1 = tmp;
 
-        let tmp = node2.borrow().parent().unwrap();
+        let tmp = node2.borrow().parent.upgrade().unwrap();
         node2 = tmp;
 
         total_distance += 2;
@@ -78,7 +78,7 @@ fn depth(mut node: Tree) -> u32 {
 
     #[allow(clippy::while_let_loop)]
     loop {
-        let parent = match node.borrow().parent() {
+        let parent = match node.borrow().parent.upgrade() {
             Some(p) => p,
             None => break,
         };
@@ -102,8 +102,8 @@ fn read_input() -> HashMap<Rc<str>, Tree> {
     // Lookup a node, or create one if it doesn't exist.
     let mut get_node = |label: &str| {
         if !nodes.contains_key(label) {
-            let rc = Rc::from(label);
-            nodes.insert(Rc::clone(&rc), Tree::new(rc));
+            let l = Rc::from(label);
+            nodes.insert(Rc::clone(&l), Node::new(l));
         }
 
         Tree::clone(&nodes[label])
@@ -115,7 +115,7 @@ fn read_input() -> HashMap<Rc<str>, Tree> {
         let parent = get_node(words.next().unwrap());
         let child = get_node(words.next().unwrap());
 
-        assert!(child.borrow().parent().is_none());
+        assert!(child.borrow().parent.upgrade().is_none());
 
         // Insert the edge `(parent, child)` into the graph.
         parent.borrow_mut().children.insert(Tree::clone(&child));
