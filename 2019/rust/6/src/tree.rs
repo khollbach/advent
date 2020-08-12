@@ -1,6 +1,6 @@
+use by_address::ByAddress;
 use std::cell::RefCell;
-use std::cmp::Ordering;
-use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::rc::{Rc, Weak};
 
 pub type Tree = Rc<RefCell<Node>>;
@@ -9,36 +9,23 @@ pub type Tree = Rc<RefCell<Node>>;
 /// Graphs with cycles will cause a memory leak.
 #[derive(Debug)]
 pub struct Node {
-    label: Rc<str>,
     pub parent: Weak<RefCell<Node>>,
-    pub children: BTreeSet<Tree>,
+    pub children: HashSet<ByAddress<Tree>>,
 }
 
 impl Node {
-    pub fn new(label: Rc<str>) -> Tree {
+    pub fn new() -> Tree {
         Rc::new(RefCell::new(Self {
-            label,
             parent: Weak::new(),
-            children: BTreeSet::new(),
+            children: HashSet::new(),
         }))
     }
 }
 
-impl Ord for Node {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.label.cmp(&other.label)
-    }
-}
-
-impl PartialOrd for Node {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
+/// Allows us to compare Trees by address.
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
-        self.label == other.label
+        ByAddress(self) == ByAddress(other)
     }
 }
 
