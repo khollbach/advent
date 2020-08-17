@@ -1,3 +1,5 @@
+#![feature(or_patterns)]
+
 use builder::CPUBuilder;
 use instruction::{Instruction, Operation, ParamMode, ParamType};
 use std::convert::TryFrom;
@@ -14,6 +16,10 @@ pub struct CPU {
     /// The instruction pointer (aka "program counter"). An
     /// index into `self.mem`. Invariant: `pc < mem.len()`.
     pc: usize,
+
+    /// The relative base, used as a memory address offset for operations with parameters in
+    /// relative-mode. See Day 9 for more.
+    relative_base: isize,
 
     /// I/O mechanism.
     get_input: Box<dyn FnMut() -> i32>,
@@ -84,6 +90,9 @@ impl CPU {
                 let b = if args[0] == args[1] { 1 } else { 0 };
                 self.mem[addr(args[2])] = b;
             }
+            RelativeBaseOffset => {
+                self.relative_base += isize::try_from(args[0]).unwrap();
+            }
             Halt => {
                 return false;
             }
@@ -97,22 +106,41 @@ impl CPU {
     }
 
     /// Get arguments for instr. Arguments and "modes" are described in Day 5.
-    /// Returns a memory address for Write parameters; otherwise a value.
-    fn get_args(&mut self, instr: &Instruction) -> Vec<i32> {
+    /// Relative parameter mode was introduced in Day 9.
+    fn get_args(&self, instr: &Instruction) -> Vec<i32> {
+        instr
+            .params
+            .iter()
+            .zip(1..)
+            .map(|(&(typ, mode), offset)| {
+                let mut param = self.mem[self.pc + offset];
+
+                // Adjust for relative base.
+                if mode == ParamMode::Relative {
+                    param += i32::try_from(self.relative_base).unwrap();
+                }
+
+                self.deref_param(param, typ, mode)
+            })
+            .collect()
+    }
+
+    /// Helper for `get_args`. Optionally dereference `param` depending on the parameter-mode.
+    ///
+    /// Doesn't account for relative base, that happens elsewhere.
+    fn deref_param(&self, param: i32, typ: ParamType, mode: ParamMode) -> i32 {
         use ParamMode::*;
         use ParamType::*;
 
-        (1..)
-            .zip(instr.params.iter())
-            .map(|(offset, &(typ, mode))| match (typ, mode) {
-                (Read, Position) => {
-                    let addr = addr(self.mem[self.pc + offset]);
-                    self.mem[addr]
-                }
-                (Read, Immediate) | (Write, Position) => self.mem[self.pc + offset],
-                (Write, Immediate) => unreachable!(),
-            })
-            .collect()
+        match (typ, mode) {
+            (Write, Position | Relative) | (Read, Immediate) => {
+                // Writes and immediate reads don't derefence;
+                // they return the parameter value directly.
+                param
+            }
+            (Read, Position | Relative) => self.mem[addr(param)],
+            (Write, Immediate) => panic!("Write parameters cannot be in Immediate mode"),
+        }
     }
 
     /// Increment program counter according to the number of arguments of instr.

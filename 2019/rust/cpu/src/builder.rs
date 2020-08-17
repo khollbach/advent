@@ -104,6 +104,7 @@ impl CPUBuilder {
         CPU {
             mem,
             pc: 0,
+            relative_base: 0,
             get_input,
             send_output,
         }

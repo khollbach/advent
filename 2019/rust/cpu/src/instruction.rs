@@ -41,6 +41,7 @@ pub enum Operation {
     JumpIfFalse,
     LessThan,
     Equals,
+    RelativeBaseOffset,
     Halt,
 }
 
@@ -58,6 +59,7 @@ impl Operation {
             6 => JumpIfFalse,
             7 => LessThan,
             8 => Equals,
+            9 => RelativeBaseOffset,
             99 => Halt,
             _ => panic!("Not an operation: {}", code),
         }
@@ -76,6 +78,7 @@ impl Operation {
             JumpIfFalse => 6,
             LessThan => 7,
             Equals => 8,
+            RelativeBaseOffset => 9,
             Halt => 99,
         }
     }
@@ -94,6 +97,7 @@ impl Operation {
             JumpIfFalse => vec![Read, Read],
             LessThan => vec![Read, Read, Write],
             Equals => vec![Read, Read, Write],
+            RelativeBaseOffset => vec![Read],
             Halt => vec![],
         }
     }
@@ -105,22 +109,19 @@ impl Operation {
         use Operation::*;
 
         match self {
-            Add => true,
-            Multiply => true,
-            GetInput => true,
-            SendOutput => true,
             JumpIfTrue => false,
             JumpIfFalse => false,
-            LessThan => true,
-            Equals => true,
             Halt => false,
+            _ => true,
         }
     }
 }
 
-/// Type of parameter: either read or write. This specifies which modes are valid when using this
-/// parameter. Params that are `read` can be in either position mode or immediate mode. Params are
-/// `write` can only be in position mode.
+/// Type of parameter: either read or write. This indicates which modes are valid when using this
+/// parameter.
+///
+/// Params that are `read` can be in any mode. Params that are `write` *cannot* be in immediate
+/// mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParamType {
     Read,
@@ -132,6 +133,7 @@ pub enum ParamType {
 pub enum ParamMode {
     Position,
     Immediate,
+    Relative,
 }
 
 impl ParamMode {
@@ -142,6 +144,7 @@ impl ParamMode {
         match mode_flag {
             0 => Position,
             1 => Immediate,
+            2 => Relative,
             _ => panic!("Invalid mode flag: {}", mode_flag),
         }
     }
