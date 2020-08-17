@@ -23,6 +23,7 @@ pub struct CPU {
 impl CPU {
     /// Create a new intcode computer. `memory` must be non-empty.
     /// This follows the builder pattern; see CPUBuilder for more.
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(memory: Vec<i32>) -> CPUBuilder {
         CPUBuilder::new(memory)
     }
@@ -92,7 +93,7 @@ impl CPU {
             self.update_pc(&instr);
         }
 
-        return true;
+        true
     }
 
     /// Get arguments for instr. Arguments and "modes" are described in Day 5.
@@ -108,10 +109,7 @@ impl CPU {
                     let addr = addr(self.mem[self.pc + offset]);
                     self.mem[addr]
                 }
-                (Read, Immediate) | (Write, Position) => {
-                    let val = self.mem[self.pc + offset];
-                    val
-                }
+                (Read, Immediate) | (Write, Position) => self.mem[self.pc + offset],
                 (Write, Immediate) => unreachable!(),
             })
             .collect()

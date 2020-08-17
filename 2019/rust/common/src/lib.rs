@@ -6,7 +6,7 @@ pub fn read_line() -> io::Result<String> {
     io::stdin().read_line(&mut buf)?;
 
     // Strip newline.
-    if buf.chars().last() == Some('\n') {
+    if buf.ends_with('\n') {
         buf.pop();
     }
 
