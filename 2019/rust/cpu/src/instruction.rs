@@ -66,7 +66,7 @@ impl Operation {
     }
 
     /// What is the operation code for this op?
-    pub fn _code(&self) -> i32 {
+    pub fn _code(self) -> i32 {
         use Operation::*;
 
         match self {
@@ -84,7 +84,7 @@ impl Operation {
     }
 
     /// How many parameters (and of what type) does this op expect?
-    pub fn param_types(&self) -> Vec<ParamType> {
+    pub fn param_types(self) -> Vec<ParamType> {
         use Operation::*;
         use ParamType::*;
 
@@ -105,7 +105,7 @@ impl Operation {
     /// Should the program counter be automatically incremented after executing this operation?
     /// Returns true or false accordingly, but does no mutation.
     #[must_use]
-    pub fn auto_inc_pc(&self) -> bool {
+    pub fn auto_inc_pc(self) -> bool {
         use Operation::*;
 
         match self {

@@ -19,7 +19,7 @@ impl Pixel {
         }
     }
 
-    pub fn value(&self) -> u8 {
+    pub fn value(self) -> u8 {
         match self {
             Pixel::Black => 0,
             Pixel::White => 1,
@@ -27,7 +27,7 @@ impl Pixel {
         }
     }
 
-    pub fn to_char(&self) -> char {
+    pub fn to_char(self) -> char {
         match self {
             Pixel::Black => ' ',
             Pixel::White => '#',
@@ -35,7 +35,7 @@ impl Pixel {
         }
     }
 
-    pub fn is_visible(&self) -> bool {
+    pub fn is_visible(self) -> bool {
         match self {
             Pixel::Transparent => false,
             _ => true,
