@@ -121,13 +121,10 @@ impl CPU {
         let offset = 1 + instr.params.len();
 
         let new_pc = self.pc + offset;
-        if new_pc >= self.mem.len() {
-            panic!(
-                "Program counter would be out of range: {} vs {}",
-                new_pc,
-                self.mem.len()
-            );
-        }
+        assert!(
+            new_pc < self.mem.len(),
+            "Program counter would be out of range"
+        );
 
         self.pc = new_pc;
     }
