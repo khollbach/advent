@@ -1,13 +1,18 @@
 use common::read_line;
+use sif::{Pixel, SIF};
+
+mod sif;
 
 fn main() {
     let img = read_input();
 
     println!("{}", day1(&img));
+    day2(&img);
 }
 
 #[allow(clippy::ptr_arg)]
 fn day1(img: &SIF) -> u32 {
+    // Find layer with minimum number of zeros.
     let best_layer = img
         .iter()
         .map(|layer| {
@@ -28,51 +33,49 @@ fn day1(img: &SIF) -> u32 {
     ones * twos
 }
 
-/// An image represented as layers of squares of pixels.
-type SIF = Vec<Vec<Vec<Pixel>>>;
-
-/// One pixel in one layer of a SIF file.
-enum Pixel {
-    Zero,
-    One,
-    Two,
-}
-
-impl Pixel {
-    fn new(c: char) -> Self {
-        match c {
-            '0' => Pixel::Zero,
-            '1' => Pixel::One,
-            '2' => Pixel::Two,
-            _ => panic!("Invalid pixel value: {}", c),
-        }
+#[allow(clippy::ptr_arg)]
+fn day2(img: &SIF) {
+    // Ensure we have at least 1 layer, and 1 row.
+    if img.is_empty() || img[0].is_empty() {
+        return;
     }
 
-    fn value(&self) -> u8 {
-        match self {
-            Pixel::Zero => 0,
-            Pixel::One => 1,
-            Pixel::Two => 2,
+    let height = img[0].len();
+    assert!(height != 0);
+    let width = img[0][0].len();
+
+    for h in 0..height {
+        for w in 0..width {
+            let pixel = first_visible_pixel(img, h, w)
+                .unwrap_or_else(|| panic!("No visible pixel at position ({}, {})", h, w));
+            print!("{}", pixel.to_char());
         }
+        println!();
     }
 }
 
-const HEIGHT: usize = 6;
-const WIDTH: usize = 25;
+/// What is the first visible pixel, top-to-bottom, in this image?
+fn first_visible_pixel(img: &SIF, h: usize, w: usize) -> Option<Pixel> {
+    for d in 0..img.len() {
+        let pixel = img[d][h][w];
+        if pixel.is_visible() {
+            return Some(pixel);
+        }
+    }
+    None
+}
 
 /// Read the image into a 3-D matrix: [layer, row, column].
 fn read_input() -> Vec<Vec<Vec<Pixel>>> {
+    const HEIGHT: usize = 6;
+    const WIDTH: usize = 25;
+
     let s = read_line().unwrap();
 
     // Calculate the number of layers.
     let n = s.len();
     let depth = n / HEIGHT / WIDTH;
-    if depth * HEIGHT * WIDTH != n {
-        panic!(
-            "Image isn't \"square\" (cubic). (d, w, h, n): ({}, {}, {}, {})",
-            depth, WIDTH, HEIGHT, n
-        );
-    }
+    assert_eq!(depth * HEIGHT * WIDTH, n, "Image isn't \"square\" (cubic)");
 
     let mut chars = s.chars();
 
@@ -91,10 +94,8 @@ fn read_input() -> Vec<Vec<Vec<Pixel>>> {
         layers.push(layer);
     }
 
-    // Again, this won't happen if the input is pure ascii.
-    if chars.next().is_some() {
-        panic!("Non-ascii input");
-    }
+    // Again, this will succeed if the input is pure ascii.
+    assert!(chars.next().is_none(), "Non-ascii input");
 
     layers
 }
