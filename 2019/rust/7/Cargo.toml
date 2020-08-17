@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 cpu = { path = "../cpu" }
+rayon = "1.3.1"
+factorial = "0.2.0"
