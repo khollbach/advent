@@ -148,7 +148,7 @@ impl CPU {
         // 1 for the opcode, plus each of the args.
         let offset = 1 + instr.params.len() as i64;
 
-        self.pc = self.pc + offset;
+        self.pc += offset;
     }
 }
 
