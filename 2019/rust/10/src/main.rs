@@ -7,6 +7,6 @@ fn main() {
     let (station, num_vis) = part1::best_station(&asteroids);
     println!("{}", num_vis);
 
-    let (x, y) = part2::asteroid_200(&asteroids, station);
+    let (x, y) = part2::asteroid_n(&asteroids, station, 200);
     println!("{}", x * 100 + y);
 }

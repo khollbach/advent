@@ -2,8 +2,10 @@ use crate::{interference, subtract_points, Point};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 
-/// What is the 200th asteroid to be zapped? See Day 10 for details.
-pub fn asteroid_200(asteroids: &HashSet<Point>, station: Point) -> Point {
+/// What is the nth asteroid to be zapped? See Day 10 for details.
+pub fn asteroid_n(asteroids: &HashSet<Point>, station: Point, n: usize) -> Point {
+    assert_ne!(n, 0);
+
     let mut candidates: Vec<AsteroidInfo> = asteroids
         .iter()
         .cloned()
@@ -11,16 +13,17 @@ pub fn asteroid_200(asteroids: &HashSet<Point>, station: Point) -> Point {
         .map(|point| AsteroidInfo {
             point,
             layer: interference(asteroids, station, point),
-            angle: Angle::new(point, station),
+            angle: Angle::new(station, point),
         })
         .collect();
 
     candidates.sort_by_key(|info| (info.layer, info.angle));
 
-    candidates[199].point
+    candidates[n - 1].point
 }
 
 /// Helper struct for sorting asteroids.
+#[derive(Debug, Clone, Copy)]
 struct AsteroidInfo {
     /// The location of an asteroid other than `station`.
     point: Point,
@@ -35,16 +38,25 @@ struct AsteroidInfo {
 struct Angle(Point);
 
 impl Angle {
+    /// The direction matters! The angle is flipped 180* if you swap a and b.
     fn new(a: Point, b: Point) -> Self {
+        assert_ne!(a, b);
         Self(subtract_points(b, a))
     }
 
     /// Compares clockwise from noon (accounting for inverted y-axis).
     fn sort_key(self) -> (bool, f64) {
         let (dx, dy) = self.0;
-        let slope = dy as f64 / dx as f64;
+        let up: bool = dx == 0 && dy < 0;
+        let down: bool = dx == 0 && dy > 0;
 
-        let down = dx == 0 && dy > 0;
+        let slope = if up || down {
+            f64::NEG_INFINITY
+        } else {
+            dy as f64 / dx as f64
+        };
+
+        // The left half of the clock, ie [6pm, noon)
         let flipside = dx < 0 || down;
 
         // Note that we *don't* flip slope, since the y-axis is already inverted.
