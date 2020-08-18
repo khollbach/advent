@@ -1,3 +1,4 @@
+use super::memory::Memory;
 use super::CPU;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -13,18 +14,17 @@ use std::rc::Rc;
 /// assert_eq!(result, 14);
 /// ```
 pub struct CPUBuilder {
-    mem: Vec<i32>,
-    args: Option<(i32, i32)>,
-    get_input: Option<Box<dyn FnMut() -> i32>>,
-    send_output: Option<Box<dyn FnMut(i32)>>,
+    mem: Memory,
+    args: Option<(i64, i64)>,
+    get_input: Option<Box<dyn FnMut() -> i64>>,
+    send_output: Option<Box<dyn FnMut(i64)>>,
 }
 
 impl CPUBuilder {
-    /// Create a new CPUBuilder. `memory` must be non-empty.
-    pub fn new(memory: Vec<i32>) -> CPUBuilder {
-        assert!(!memory.is_empty());
+    /// Create a new CPUBuilder.
+    pub fn new(initial_memory: Vec<i64>) -> CPUBuilder {
         CPUBuilder {
-            mem: memory,
+            mem: Memory::new(initial_memory),
             args: None,
             get_input: None,
             send_output: None,
@@ -33,7 +33,7 @@ impl CPUBuilder {
 
     /// Set the arguments to execute with. (Optional!)
     /// Arguments and return values are described in Day 2.
-    pub fn args(self, noun: i32, verb: i32) -> Self {
+    pub fn args(self, noun: i64, verb: i64) -> Self {
         assert!(self.args.is_none());
         Self {
             args: Some((noun, verb)),
@@ -44,7 +44,7 @@ impl CPUBuilder {
     /// Set input function. (Optional.) I/O is described in Day 5.
     pub fn input_fn<F: 'static>(self, get_input: F) -> Self
     where
-        F: FnMut() -> i32,
+        F: FnMut() -> i64,
     {
         assert!(self.get_input.is_none());
         Self {
@@ -56,7 +56,7 @@ impl CPUBuilder {
     /// Use an iterator as the input function.
     pub fn input_iter<I: 'static>(self, mut input_iter: I) -> Self
     where
-        I: Iterator<Item = i32>,
+        I: Iterator<Item = i64>,
     {
         self.input_fn(move || input_iter.next().unwrap())
     }
@@ -64,7 +64,7 @@ impl CPUBuilder {
     /// Set output function. (Optional.) I/O is described in Day 5.
     pub fn output_fn<F: 'static>(self, send_output: F) -> Self
     where
-        F: FnMut(i32),
+        F: FnMut(i64),
     {
         assert!(self.send_output.is_none());
         Self {
@@ -74,7 +74,7 @@ impl CPUBuilder {
     }
 
     /// Use a vector as the output stream. Output values will be appended to the existing vector.
-    pub fn output_vec(self, output_vec: &Rc<RefCell<Vec<i32>>>) -> Self {
+    pub fn output_vec(self, output_vec: &Rc<RefCell<Vec<i64>>>) -> Self {
         let clone = Rc::clone(output_vec);
         self.output_fn(move |x| clone.borrow_mut().push(x))
     }
@@ -84,9 +84,8 @@ impl CPUBuilder {
         let mut mem = self.mem;
 
         if let Some((noun, verb)) = self.args {
-            assert!(mem.len() >= 3);
-            mem[1] = noun;
-            mem[2] = verb;
+            mem.set(1, noun);
+            mem.set(2, verb);
         }
 
         let get_input = match self.get_input {
@@ -111,7 +110,7 @@ impl CPUBuilder {
     }
 
     /// Finish building and execute the program.
-    pub fn run(self) -> i32 {
+    pub fn run(self) -> i64 {
         let cpu = self.finish();
 
         cpu.run()

@@ -10,12 +10,12 @@ fn main() {
     println!("{}", noun * 100 + verb);
 }
 
-fn part1(mem: Vec<i32>) -> i32 {
+fn part1(mem: Vec<i64>) -> i64 {
     CPU::new(mem).args(12, 2).run()
 }
 
-fn part2(mem: Vec<i32>) -> (i32, i32) {
-    const TARGET: i32 = 19690720;
+fn part2(mem: Vec<i64>) -> (i64, i64) {
+    const TARGET: i64 = 19690720;
 
     for noun in 0..100 {
         for verb in 0..100 {

@@ -16,19 +16,19 @@ fn main() {
 }
 
 /// Amplifiers connected in series.
-fn day1(program: &[i32]) -> i32 {
+fn day1(program: &[i64]) -> i64 {
     best_signal(program, &[0, 1, 2, 3, 4], thruster_signal_1)
 }
 
 /// Connected in a feedback loop.
-fn day2(program: &[i32]) -> i32 {
+fn day2(program: &[i64]) -> i64 {
     best_signal(program, &[5, 6, 7, 8, 9], thruster_signal_2)
 }
 
 /// Compute the maximum thruster signal possible, over all permutations of phase settings.
-fn best_signal<F>(program: &[i32], phase_values: &[i32], thruster_signal: F) -> i32
+fn best_signal<F>(program: &[i64], phase_values: &[i64], thruster_signal: F) -> i64
 where
-    F: Fn(&[i32], &[i32]) -> i32 + Sync,
+    F: Fn(&[i64], &[i64]) -> i64 + Sync,
 {
     permutations(phase_values)
         .par_iter()
@@ -39,7 +39,7 @@ where
 
 /// This would ideally be lazy (i.e. return an iterator instead of a vector). Not a big deal
 /// though. If rust had a feature like python's generator syntax, this would be trivial...
-fn permutations(values: &[i32]) -> Vec<Vec<i32>> {
+fn permutations(values: &[i64]) -> Vec<Vec<i64>> {
     let n = values.len();
     if n == 0 {
         return vec![vec![]];
@@ -65,7 +65,7 @@ fn permutations(values: &[i32]) -> Vec<Vec<i32>> {
 }
 
 /// Run the 5 amps in sequence and return the output amplitude for these phase settings.
-fn thruster_signal_1(program: &[i32], phase_settings: &[i32]) -> i32 {
+fn thruster_signal_1(program: &[i64], phase_settings: &[i64]) -> i64 {
     let mut signal = 0;
 
     for &phase in phase_settings {
@@ -84,7 +84,7 @@ fn thruster_signal_1(program: &[i32], phase_settings: &[i32]) -> i32 {
 }
 
 /// Connect the 5 amps in a feedback loop and return the output amplitude for these phase settings.
-fn thruster_signal_2(program: &[i32], phase_settings: &[i32]) -> i32 {
+fn thruster_signal_2(program: &[i64], phase_settings: &[i64]) -> i64 {
     let n = phase_settings.len();
 
     let chans: Vec<_> = (0..n)
@@ -117,10 +117,10 @@ fn thruster_signal_2(program: &[i32], phase_settings: &[i32]) -> i32 {
 }
 
 fn run_amp(
-    mem: Vec<i32>,
-    phase: i32,
-    input: Arc<Mutex<Receiver<i32>>>,
-    output: Arc<Mutex<Sender<i32>>>,
+    mem: Vec<i64>,
+    phase: i64,
+    input: Arc<Mutex<Receiver<i64>>>,
+    output: Arc<Mutex<Sender<i64>>>,
 ) -> JoinHandle<()> {
     let mut first_input = true;
 

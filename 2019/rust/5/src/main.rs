@@ -8,7 +8,7 @@ fn main() {
     part2(mem);
 }
 
-fn part1(mem: Vec<i32>) {
+fn part1(mem: Vec<i64>) {
     let mut inputs = vec![1];
 
     CPU::new(mem)
@@ -21,7 +21,7 @@ fn part1(mem: Vec<i32>) {
         .run();
 }
 
-fn part2(mem: Vec<i32>) {
+fn part2(mem: Vec<i64>) {
     let mut inputs = vec![5];
 
     CPU::new(mem)

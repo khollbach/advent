@@ -2,44 +2,44 @@
 
 use builder::CPUBuilder;
 use instruction::{Instruction, Operation, ParamMode, ParamType};
-use std::convert::TryFrom;
+use memory::Memory;
 
 mod builder;
 mod instruction;
+mod memory;
 pub mod misc;
 
 /// A computer emulator that can run Intcode programs.
 pub struct CPU {
     /// The current state of memory.
-    mem: Vec<i32>,
+    mem: Memory,
 
     /// The instruction pointer (aka "program counter"). An
     /// index into `self.mem`. Invariant: `pc < mem.len()`.
-    pc: usize,
+    pc: i64,
 
     /// The relative base, used as a memory address offset for operations with parameters in
     /// relative-mode. See Day 9 for more.
-    relative_base: isize,
+    relative_base: i64,
 
     /// I/O mechanism.
-    get_input: Box<dyn FnMut() -> i32>,
-    send_output: Box<dyn FnMut(i32)>,
+    get_input: Box<dyn FnMut() -> i64>,
+    send_output: Box<dyn FnMut(i64)>,
 }
 
 impl CPU {
-    /// Create a new intcode computer. `memory` must be non-empty.
-    /// This follows the builder pattern; see CPUBuilder for more.
+    /// Create a new intcode computer. This follows the builder pattern; see CPUBuilder for more.
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(memory: Vec<i32>) -> CPUBuilder {
-        CPUBuilder::new(memory)
+    pub fn new(initial_memory: Vec<i64>) -> CPUBuilder {
+        CPUBuilder::new(initial_memory)
     }
 
     /// Execute instructions until a Halt. Return the final value at memory address 0.
     /// Consumes the CPU.
-    pub fn run(mut self) -> i32 {
+    pub fn run(mut self) -> i64 {
         self.run_internal();
 
-        self.mem[0]
+        self.mem.get(0)
     }
 
     /// Execute instructions until a Halt.
@@ -52,46 +52,46 @@ impl CPU {
     fn step(&mut self) -> bool {
         use Operation::*;
 
-        let instr = Instruction::new(self.mem[self.pc]);
+        let instr = Instruction::new(self.mem.get(self.pc));
         let args = self.get_args(&instr);
 
         match instr.op {
             Add => {
-                self.mem[addr(args[2])] = args[0] + args[1];
+                self.mem.set(args[2], args[0] + args[1]);
             }
             Multiply => {
-                self.mem[addr(args[2])] = args[0] * args[1];
+                self.mem.set(args[2], args[0] * args[1]);
             }
             GetInput => {
-                self.mem[addr(args[0])] = (self.get_input)();
+                self.mem.set(args[0], (self.get_input)());
             }
             SendOutput => {
                 (self.send_output)(args[0]);
             }
             JumpIfTrue => {
                 if args[0] != 0 {
-                    self.pc = addr(args[1]);
+                    self.pc = args[1];
                 } else {
                     self.update_pc(&instr);
                 }
             }
             JumpIfFalse => {
                 if args[0] == 0 {
-                    self.pc = addr(args[1]);
+                    self.pc = args[1];
                 } else {
                     self.update_pc(&instr);
                 }
             }
             LessThan => {
                 let b = if args[0] < args[1] { 1 } else { 0 };
-                self.mem[addr(args[2])] = b;
+                self.mem.set(args[2], b);
             }
             Equals => {
                 let b = if args[0] == args[1] { 1 } else { 0 };
-                self.mem[addr(args[2])] = b;
+                self.mem.set(args[2], b);
             }
             RelativeBaseOffset => {
-                self.relative_base += isize::try_from(args[0]).unwrap();
+                self.relative_base += args[0];
             }
             Halt => {
                 return false;
@@ -107,17 +107,17 @@ impl CPU {
 
     /// Get arguments for instr. Arguments and "modes" are described in Day 5.
     /// Relative parameter mode was introduced in Day 9.
-    fn get_args(&self, instr: &Instruction) -> Vec<i32> {
+    fn get_args(&self, instr: &Instruction) -> Vec<i64> {
         instr
             .params
             .iter()
             .zip(1..)
             .map(|(&(typ, mode), offset)| {
-                let mut param = self.mem[self.pc + offset];
+                let mut param = self.mem.get(self.pc + offset);
 
                 // Adjust for relative base.
                 if mode == ParamMode::Relative {
-                    param += i32::try_from(self.relative_base).unwrap();
+                    param += self.relative_base;
                 }
 
                 self.deref_param(param, typ, mode)
@@ -128,7 +128,7 @@ impl CPU {
     /// Helper for `get_args`. Optionally dereference `param` depending on the parameter-mode.
     ///
     /// Doesn't account for relative base, that happens elsewhere.
-    fn deref_param(&self, param: i32, typ: ParamType, mode: ParamMode) -> i32 {
+    fn deref_param(&self, param: i64, typ: ParamType, mode: ParamMode) -> i64 {
         use ParamMode::*;
         use ParamType::*;
 
@@ -138,7 +138,7 @@ impl CPU {
                 // they return the parameter value directly.
                 param
             }
-            (Read, Position | Relative) => self.mem[addr(param)],
+            (Read, Position | Relative) => self.mem.get(param),
             (Write, Immediate) => panic!("Write parameters cannot be in Immediate mode"),
         }
     }
@@ -146,21 +146,10 @@ impl CPU {
     /// Increment program counter according to the number of arguments of instr.
     fn update_pc(&mut self, instr: &Instruction) {
         // 1 for the opcode, plus each of the args.
-        let offset = 1 + instr.params.len();
+        let offset = 1 + instr.params.len() as i64;
 
-        let new_pc = self.pc + offset;
-        assert!(
-            new_pc < self.mem.len(),
-            "Program counter would be out of range"
-        );
-
-        self.pc = new_pc;
+        self.pc = self.pc + offset;
     }
-}
-
-/// Perform checked conversion from i32 to usize. Panics if negative or overflow.
-fn addr(mem_addr: i32) -> usize {
-    usize::try_from(mem_addr).unwrap()
 }
 
 #[cfg(test)]
@@ -172,12 +161,10 @@ mod tests {
 
         /// Verify that the memory after running the program is as expected.
         /// `before` is the initial memory / program state.
-        fn test_mem(before: Vec<i32>, after: Vec<i32>) {
+        fn test_mem(before: Vec<i64>, after: Vec<i64>) {
             let mut cpu = CPU::new(before).finish();
             cpu.run_internal();
-
-            let actual = cpu.mem;
-            assert_eq!(after, actual);
+            assert_eq!(after, cpu.mem._into_vec());
         }
 
         #[test]
@@ -230,7 +217,7 @@ mod tests {
 
         use super::*;
 
-        fn test_io(mem: Vec<i32>, input: Vec<i32>, expected_output: Vec<i32>) {
+        fn test_io(mem: Vec<i64>, input: Vec<i64>, expected_output: Vec<i64>) {
             let actual_output = Rc::new(RefCell::new(vec![]));
 
             let mut cpu = CPU::new(mem)
@@ -242,7 +229,7 @@ mod tests {
             assert_eq!(expected_output, *actual_output.borrow());
         }
 
-        fn test_many(mem: Vec<i32>, io_pairs: Vec<(Vec<i32>, Vec<i32>)>) {
+        fn test_many(mem: Vec<i64>, io_pairs: Vec<(Vec<i64>, Vec<i64>)>) {
             for (input, output) in io_pairs {
                 test_io(mem.clone(), input, output);
             }
@@ -370,6 +357,33 @@ mod tests {
             ];
 
             test_many(mem, io_pairs);
+        }
+
+        /// Quine; takes no input and produces a copy of itself as output.
+        #[test]
+        fn test9() {
+            let mem = vec![
+                109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99,
+            ];
+
+            test_io(mem.clone(), vec![], mem);
+        }
+
+        /// Outputs a 16-digit number.
+        #[test]
+        fn test10() {
+            let mem = vec![1102, 34915192, 34915192, 7, 4, 7, 99, 0];
+
+            test_io(mem, vec![], vec![1219070632396864]);
+        }
+
+        /// Outputs the large number in the middle.
+        #[test]
+        fn test11() {
+            const TARGET: i64 = 1125899906842624;
+            let mem = vec![104, TARGET, 99];
+
+            test_io(mem, vec![], vec![TARGET]);
         }
     }
 }

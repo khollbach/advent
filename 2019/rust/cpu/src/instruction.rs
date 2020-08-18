@@ -10,7 +10,7 @@ pub struct Instruction {
 
 impl Instruction {
     /// Parse an opcode into its operation and parameter mode flags.
-    pub fn new(opcode: i32) -> Self {
+    pub fn new(opcode: i64) -> Self {
         let op = Operation::new(opcode % 100);
 
         let mut params = vec![];
@@ -47,7 +47,7 @@ pub enum Operation {
 
 impl Operation {
     /// Parse an operation code into its operation. Must not include mode flags.
-    pub fn new(code: i32) -> Self {
+    pub fn new(code: i64) -> Self {
         use Operation::*;
 
         match code {
@@ -66,7 +66,7 @@ impl Operation {
     }
 
     /// What is the operation code for this op?
-    pub fn _code(self) -> i32 {
+    pub fn _code(self) -> i64 {
         use Operation::*;
 
         match self {
@@ -138,7 +138,7 @@ pub enum ParamMode {
 
 impl ParamMode {
     /// Construct a new ParamMode from a single-bit flag: either 0 or 1.
-    pub fn new(mode_flag: i32) -> Self {
+    pub fn new(mode_flag: i64) -> Self {
         use ParamMode::*;
 
         match mode_flag {
