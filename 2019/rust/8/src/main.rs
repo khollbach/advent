@@ -6,12 +6,12 @@ mod sif;
 fn main() {
     let img = read_input();
 
-    println!("{}", day1(&img));
-    day2(&img);
+    println!("{}", part1(&img));
+    part2(&img);
 }
 
 #[allow(clippy::ptr_arg)]
-fn day1(img: &SIF) -> u32 {
+fn part1(img: &SIF) -> u32 {
     // Find layer with minimum number of zeros.
     let best_layer = img
         .iter()
@@ -34,7 +34,7 @@ fn day1(img: &SIF) -> u32 {
 }
 
 #[allow(clippy::ptr_arg)]
-fn day2(img: &SIF) {
+fn part2(img: &SIF) {
     // Ensure we have at least 1 layer, and 1 row.
     if img.is_empty() || img[0].is_empty() {
         return;

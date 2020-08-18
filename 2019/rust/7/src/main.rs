@@ -11,17 +11,17 @@ use std::thread::{self, JoinHandle};
 fn main() {
     let mem = read_mem().unwrap();
 
-    println!("{}", day1(&mem));
-    println!("{}", day2(&mem));
+    println!("{}", part1(&mem));
+    println!("{}", part2(&mem));
 }
 
 /// Amplifiers connected in series.
-fn day1(program: &[i64]) -> i64 {
+fn part1(program: &[i64]) -> i64 {
     best_signal(program, &[0, 1, 2, 3, 4], thruster_signal_1)
 }
 
 /// Connected in a feedback loop.
-fn day2(program: &[i64]) -> i64 {
+fn part2(program: &[i64]) -> i64 {
     best_signal(program, &[5, 6, 7, 8, 9], thruster_signal_2)
 }
 
