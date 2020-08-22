@@ -1,14 +1,21 @@
-use std::io;
+use std::io::{self, prelude::*};
 
-/// Read a line from stdin. Strip any trailing newline.
+/// Read a line from stdin. Does not include a trailing newline.
 pub fn read_line() -> io::Result<String> {
-    let mut buf = String::new();
-    io::stdin().read_line(&mut buf)?;
+    io::stdin().lock().lines().next().unwrap_or_else(|| {
+        Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "End of standard input.",
+        ))
+    })
+}
 
-    // Strip newline.
-    if buf.ends_with('\n') {
-        buf.pop();
-    }
-
-    Ok(buf)
+/// For using files as test inputs.
+///
+/// Returns a BufReader.
+#[macro_export]
+macro_rules! input {
+    ($file:expr) => {
+        BufReader::new(include_str!($file).as_bytes())
+    };
 }
