@@ -1,8 +1,14 @@
-use std::io::{self, prelude::*};
+use std::io;
+use std::io::prelude::*;
 
 /// Read a line from stdin. Does not include a trailing newline.
 pub fn read_line() -> io::Result<String> {
-    io::stdin().lock().lines().next().unwrap_or_else(|| {
+    get_line(io::stdin().lock())
+}
+
+/// Read one line from the input source.
+pub fn get_line<R: BufRead>(input: R) -> io::Result<String> {
+    input.lines().next().unwrap_or_else(|| {
         Err(io::Error::new(
             io::ErrorKind::UnexpectedEof,
             "End of standard input.",

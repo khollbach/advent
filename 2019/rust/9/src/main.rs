@@ -1,5 +1,4 @@
-use cpu::misc::read_mem;
-use cpu::CPU;
+use cpu::{read_mem, CPU};
 
 fn main() {
     let mem = read_mem().unwrap();

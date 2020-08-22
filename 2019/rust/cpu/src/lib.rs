@@ -7,7 +7,9 @@ use memory::Memory;
 mod builder;
 mod instruction;
 mod memory;
-pub mod misc;
+mod misc;
+
+pub use misc::{parse_mem, read_mem};
 
 /// A computer emulator that can run Intcode programs.
 /// ```

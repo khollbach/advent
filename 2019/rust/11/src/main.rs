@@ -1,5 +1,4 @@
-use cpu::misc::read_mem;
-use cpu::CPU;
+use cpu::{read_mem, CPU};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem;
