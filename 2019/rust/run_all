@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -e
+
+for i in $(seq 1 25); do
+    cd "$i"
+    cargo run "$@" < ../../Inputs/"$i"
+    cd ..
+    echo
+done
