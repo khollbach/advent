@@ -35,11 +35,11 @@ fn paint_hull(mem: Vec<i64>, origin_color: i64) -> HashMap<Point, i64> {
 
     let mut num_outputs = 0;
     CPU::new(mem)
-        .input_fn(move || {
+        .input(move || {
             // Black by default.
             *imap.borrow().get(&irob.borrow().pos).unwrap_or(&0)
         })
-        .output_fn(move |x| {
+        .output(move |x| {
             assert!(x == 0 || x == 1, "Invalid robot output: {}", x);
 
             if num_outputs % 2 == 0 {

@@ -1,25 +1,15 @@
-use cpu::{parse_mem, CPU};
-use ncurses as nc;
+use cpu::{read_mem, CPU};
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::env;
-use std::error::Error;
 use std::fmt;
-use std::fs::File;
-use std::io::BufReader;
 use std::rc::Rc;
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let file_name = env::args().skip(1).next().expect("No filename given.");
-    let file = File::open(file_name)?;
-    let mem = parse_mem(BufReader::new(file)).unwrap();
+fn main() {
+    let mem = read_mem().unwrap();
 
     println!("{}", num_blocks(mem.clone()));
-
-    play_game(mem);
-
-    Ok(())
+    println!("{}", final_score(mem));
 }
 
 /// Return the number of blocks that would be initially drawn to the screen.
@@ -28,7 +18,7 @@ fn num_blocks(mem: Vec<i64>) -> usize {
     let mut adapter = ScreenAdapter::new(Rc::clone(&screen));
 
     CPU::new(mem)
-        .output_fn(move |x| {
+        .output(move |x| {
             adapter.receive(x);
         })
         .run();
@@ -42,43 +32,38 @@ fn num_blocks(mem: Vec<i64>) -> usize {
     num
 }
 
-/// Insert two quarters, and play the game.
-fn play_game(mut mem: Vec<i64>) -> i64 {
+/// Insert two quarters, and play the game using a very simple AI.
+///
+/// Each turn, the AI moves the paddle in the direction of the ball.
+fn final_score(mut mem: Vec<i64>) -> i64 {
     let screen = Rc::new(RefCell::new(Screen::new()));
     let mut adapter = ScreenAdapter::new(Rc::clone(&screen));
 
     // Insert 2 quarters.
     mem[0] = 2;
 
-    nc::timeout(-1);
-    nc::initscr();
-
     let screen2 = Rc::clone(&screen);
     CPU::new(mem)
-        .output_fn(move |x| {
+        .output(move |x| {
             adapter.receive(x);
         })
-        .input_fn(move || {
-            screen2.borrow().render();
-            loop {
-                match u8::try_from(nc::getch()).unwrap() as char {
-                    'j' => break -1,
-                    'k' => break 0,
-                    'l' => break 1,
-                    _ => continue,
-                }
+        .input(move || {
+            let ball = screen2.borrow().ball.unwrap().x;
+            let paddle = screen2.borrow().paddle.unwrap().x;
+
+            match paddle.cmp(&ball) {
+                Ordering::Less => 1,
+                Ordering::Equal => 0,
+                Ordering::Greater => -1,
             }
         })
         .run();
-
-    screen.borrow().render();
-
-    nc::endwin();
 
     let score = screen.borrow().score.unwrap();
     score
 }
 
+/// Batch up partial messages in groups of 3, and decode them to draw to the screen.
 #[derive(Debug)]
 struct ScreenAdapter {
     screen: Rc<RefCell<Screen>>,
@@ -86,8 +71,6 @@ struct ScreenAdapter {
 }
 
 impl ScreenAdapter {
-    const MSG_LEN: usize = 3;
-
     fn new(screen: Rc<RefCell<Screen>>) -> Self {
         Self {
             screen,
@@ -95,31 +78,43 @@ impl ScreenAdapter {
         }
     }
 
+    /// Receive a partial message. Then if the message buffer contains a full message, process the
+    /// message and clear the buffer.
     fn receive(&mut self, partial_msg: i64) {
-        assert!(self.msg_buf.len() < Self::MSG_LEN);
+        const MSG_LEN: usize = 3;
+        assert!(self.msg_buf.len() < MSG_LEN);
 
         self.msg_buf.push(partial_msg);
-        if self.msg_buf.len() == Self::MSG_LEN {
-            let x = self.msg_buf[0];
-            let y = self.msg_buf[1];
-            let tile_id = self.msg_buf[2];
-            self.msg_buf.clear();
 
-            if x == -1 && y == 0 {
-                self.screen.borrow_mut().score = Some(tile_id);
-            } else {
-                self.screen
-                    .borrow_mut()
-                    .draw(Point { x, y }, Tile::new(tile_id));
-            }
+        if self.msg_buf.len() == MSG_LEN {
+            self.process_msg(self.msg_buf[0], self.msg_buf[1], self.msg_buf[2]);
+            self.msg_buf.clear();
+        }
+    }
+
+    /// Process a message to draw to the screen (or update the score).
+    fn process_msg(&mut self, x: i64, y: i64, tile_id: i64) {
+        if x == -1 && y == 0 {
+            self.screen.borrow_mut().score = Some(tile_id);
+        } else {
+            self.screen
+                .borrow_mut()
+                .draw(Point { x, y }, Tile::new(tile_id));
         }
     }
 }
 
+/// Record tiles drawn to the screen.
 #[derive(Debug)]
 struct Screen {
     map: HashMap<Point, Tile>,
     score: Option<i64>,
+
+    /// Stores the most-recently-drawn, visible ball (if any).
+    ball: Option<Point>,
+
+    /// Stores the most-recently-drawn, visible paddle (if any).
+    paddle: Option<Point>,
 }
 
 impl Screen {
@@ -127,6 +122,8 @@ impl Screen {
         Self {
             map: HashMap::new(),
             score: None,
+            ball: None,
+            paddle: None,
         }
     }
 
@@ -134,20 +131,28 @@ impl Screen {
     fn draw(&mut self, coords: Point, tile: Tile) {
         assert!(coords.x >= 0 && coords.y >= 0);
 
+        match self.map.get(&coords) {
+            Some(Tile::Ball) => self.ball = None,
+            Some(Tile::Paddle) => self.paddle = None,
+            _ => (),
+        }
+
         self.map.insert(coords, tile);
+
+        match tile {
+            Tile::Ball => self.ball = Some(coords),
+            Tile::Paddle => self.paddle = Some(coords),
+            _ => (),
+        }
     }
 
-    /// Careful with this! You must call ncurses::{initscr(), endwin()} before and after!
-    fn render(&self) {
+    fn _render(&self) {
         if self.map.is_empty() {
             return;
         }
 
-        // Clear the screen.
-        nc::clear();
-
         if let Some(s) = self.score {
-            nc::addstr(&format!("Score: {}\n", s));
+            println!("Score: {}", s);
         };
 
         let min_x = self.map.keys().map(|&p| p.x).min().unwrap();
@@ -156,15 +161,15 @@ impl Screen {
         let max_y = self.map.keys().map(|&p| p.y).max().unwrap();
 
         for y in min_y..=max_y {
-            let mut line: String = (min_x..=max_x)
+            let line: String = (min_x..=max_x)
                 .map(|x| {
                     let tile = self.map.get(&Point { x, y }).unwrap_or(&Tile::Unknown);
+
                     tile.to_char()
                 })
                 .collect();
-            line.push('\n');
 
-            nc::addstr(&line);
+            println!("{}", line);
         }
     }
 }
@@ -182,6 +187,9 @@ enum Tile {
     Block,
     Paddle,
     Ball,
+
+    // The #[allow(dead_code)] shouldn't be needed, but there seems to be a bug in the compiler.
+    // Since we only use Unknown as `&Unknown`, the compiler thinks we never use it. *shrug*
     #[allow(dead_code)]
     Unknown,
 }
@@ -217,5 +225,24 @@ impl Tile {
 impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.to_char())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use common::input;
+    use cpu::parse_mem;
+
+    #[test]
+    fn part1() {
+        let mem = parse_mem(input!("../tests/input")).unwrap();
+        assert_eq!(296, num_blocks(mem));
+    }
+
+    #[test]
+    fn part2() {
+        let mem = parse_mem(input!("../tests/input")).unwrap();
+        assert_eq!(13824, final_score(mem));
     }
 }

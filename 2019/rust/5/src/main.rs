@@ -11,8 +11,8 @@ fn part1(mem: Vec<i64>) {
     let mut inputs = vec![1];
 
     CPU::new(mem)
-        .input_fn(move || inputs.pop().unwrap())
-        .output_fn(|x| {
+        .input(move || inputs.pop().unwrap())
+        .output(|x| {
             if x != 0 {
                 println!("{}", x);
             };
@@ -24,8 +24,8 @@ fn part2(mem: Vec<i64>) {
     let mut inputs = vec![5];
 
     CPU::new(mem)
-        .input_fn(move || inputs.pop().unwrap())
-        .output_fn(|x| {
+        .input(move || inputs.pop().unwrap())
+        .output(|x| {
             println!("{}", x);
         })
         .run();

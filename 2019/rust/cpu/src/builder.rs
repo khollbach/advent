@@ -42,7 +42,7 @@ impl CPUBuilder {
     }
 
     /// Set input function. (Optional.) I/O is described in Day 5.
-    pub fn input_fn<F: 'static>(self, get_input: F) -> Self
+    pub fn input<F: 'static>(self, get_input: F) -> Self
     where
         F: FnMut() -> i64,
     {
@@ -58,11 +58,11 @@ impl CPUBuilder {
     where
         I: Iterator<Item = i64>,
     {
-        self.input_fn(move || input_iter.next().unwrap())
+        self.input(move || input_iter.next().unwrap())
     }
 
     /// Set output function. (Optional.) I/O is described in Day 5.
-    pub fn output_fn<F: 'static>(self, send_output: F) -> Self
+    pub fn output<F: 'static>(self, send_output: F) -> Self
     where
         F: FnMut(i64),
     {
@@ -76,7 +76,7 @@ impl CPUBuilder {
     /// Use a vector as the output stream. Output values will be appended to the existing vector.
     pub fn output_vec(self, output_vec: &Rc<RefCell<Vec<i64>>>) -> Self {
         let clone = Rc::clone(output_vec);
-        self.output_fn(move |x| clone.borrow_mut().push(x))
+        self.output(move |x| clone.borrow_mut().push(x))
     }
 
     /// Finish building; returns a CPU, ready to execute.

@@ -9,4 +9,3 @@ edition = "2018"
 [dependencies]
 cpu = { path = "../cpu" }
 common = { path = "../common" }
-ncurses = "5.99.0"

@@ -125,7 +125,7 @@ fn run_amp(
 
     thread::spawn(move || {
         CPU::new(mem)
-            .input_fn(move || {
+            .input(move || {
                 if first_input {
                     // First input is the phase setting.
                     first_input = false;
@@ -134,7 +134,7 @@ fn run_amp(
                     input.lock().unwrap().recv().unwrap()
                 }
             })
-            .output_fn(move |x| {
+            .output(move |x| {
                 output.lock().unwrap().send(x).unwrap();
             })
             .run();

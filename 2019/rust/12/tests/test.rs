@@ -1,6 +1,5 @@
 use common::input;
 use day_12::{read_input, repeat_time, simulate};
-use std::io::BufReader;
 
 #[test]
 fn example1() {

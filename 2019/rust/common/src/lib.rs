@@ -22,6 +22,6 @@ pub fn get_line<R: BufRead>(input: R) -> io::Result<String> {
 #[macro_export]
 macro_rules! input {
     ($file:expr) => {
-        BufReader::new(include_str!($file).as_bytes())
+        std::io::BufReader::new(include_str!($file).as_bytes())
     };
 }
