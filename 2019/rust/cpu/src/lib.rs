@@ -10,6 +10,10 @@ mod memory;
 pub mod misc;
 
 /// A computer emulator that can run Intcode programs.
+/// ```
+/// use cpu::CPU;
+/// assert_eq!(2, CPU::new(vec![1, 0, 0, 0, 99]).run());
+/// ```
 pub struct CPU {
     /// The current state of memory.
     mem: Memory,
@@ -210,7 +214,6 @@ mod tests {
         }
     }
 
-    #[cfg(test)]
     mod io {
         use std::cell::RefCell;
         use std::rc::Rc;
