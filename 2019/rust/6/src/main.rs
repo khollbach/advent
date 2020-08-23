@@ -1,22 +1,19 @@
 use by_address::ByAddress;
-use std::collections::HashMap;
-use std::io::{self, prelude::*};
+use std::io;
 use std::rc::Rc;
-use tree::{Node, Tree};
+use tree::{read_tree, Tree};
 
 mod tree;
 
 fn main() {
-    let nodes = read_input();
+    let nodes = read_tree(io::stdin().lock());
 
     let root = Rc::clone(&nodes["COM"]);
+    assert!(root.borrow().parent.upgrade().is_none());
     let you = Rc::clone(&nodes["YOU"]);
     let santa = Rc::clone(&nodes["SAN"]);
 
-    // Part 1.
     println!("{}", sum_of_depths(root));
-
-    // Part 2.
     println!("{}", distance(you, santa) - 2);
 }
 
@@ -91,39 +88,21 @@ fn depth(mut node: Tree) -> u32 {
     d
 }
 
-/// Read the input graph into a map from labels to nodes.
-///
-/// The returned graph is guaranteed to be a forest, plus any number of disjoint cycles.
-///
-/// If the graph is disconnected and there are cycles, their memory will be leaked.
-fn read_input() -> HashMap<String, Tree> {
-    // Map from each label to its corresponding node.
-    let mut nodes = HashMap::new();
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use common::input;
 
-    // Lookup a node, or create one if it doesn't exist.
-    let mut get_node = |label: &str| {
-        if !nodes.contains_key(label) {
-            nodes.insert(String::from(label), Node::new());
-        }
+    #[test]
+    fn real() {
+        let nodes = read_tree(input!("../tests/input"));
 
-        Rc::clone(&nodes[label])
-    };
+        let root = Rc::clone(&nodes["COM"]);
+        assert!(root.borrow().parent.upgrade().is_none());
+        let you = Rc::clone(&nodes["YOU"]);
+        let santa = Rc::clone(&nodes["SAN"]);
 
-    for line in io::stdin().lock().lines().map(Result::unwrap) {
-        let mut words = line.split(')');
-
-        let parent = get_node(words.next().unwrap());
-        let child = get_node(words.next().unwrap());
-
-        assert!(child.borrow().parent.upgrade().is_none());
-
-        // Insert the edge `(parent, child)` into the graph.
-        parent
-            .borrow_mut()
-            .children
-            .insert(ByAddress(Rc::clone(&child)));
-        child.borrow_mut().parent = Rc::downgrade(&parent);
+        println!("{}", sum_of_depths(root));
+        println!("{}", distance(you, santa) - 2);
     }
-
-    nodes
 }
