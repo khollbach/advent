@@ -18,7 +18,7 @@ pub struct Chemical {
     pub deps: HashMap<Rc<str>, u32>,
 }
 
-/// Read a list of reactions from stdin into a graph.
+/// Read a list of reactions into a graph.
 ///
 /// There must be exactly one reaction that produces each chemical (except for "ORE").
 pub fn read_graph<R: BufRead>(input: R) -> Graph {
@@ -77,8 +77,11 @@ fn read_chemicals<'a>(line: &'a str, chem_re: &Regex) -> Vec<(&'a str, u32)> {
 fn add_reaction(graph: &mut Graph, target: &str, amount: u32, deps: &[(&str, u32)]) {
     assert_ne!(amount, 0);
 
+    // Insert edges.
     let mut deps_map = HashMap::new();
     for &(label, weight) in deps {
+        assert_ne!(weight, 0);
+
         // Insert a dummy node with amount 0, to later check that all nodes appeared in a reaction.
         if !graph.contains_key(label) {
             graph.insert(
@@ -90,14 +93,21 @@ fn add_reaction(graph: &mut Graph, target: &str, amount: u32, deps: &[(&str, u32
             );
         }
 
-        // Re-use the existing label instead of allocating a new one.
+        // Insert the edge. Re-use the existing label instead of allocating a new one.
         let (l, _) = graph.get_key_value(label).unwrap();
         deps_map.insert(Rc::clone(l), weight);
     }
 
+    // Ensure a chemical doesn't appear twice as the result of a reaction.
     assert_eq!(graph.get(target).map(|chem| chem.amount).unwrap_or(0), 0);
+
+    // Insert the target node. Re-use existing label, if any.
+    let label = graph
+        .get_key_value(target)
+        .map(|(l, _)| Rc::clone(l))
+        .unwrap_or_else(|| Rc::from(target));
     graph.insert(
-        Rc::from(target),
+        label,
         Chemical {
             amount,
             deps: deps_map,
