@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
 use std::io::prelude::*;
@@ -24,18 +25,21 @@ pub struct Chemical {
 pub fn read_graph<R: BufRead>(input: R) -> Graph {
     let mut graph = HashMap::new();
 
-    let chem = r"(\d+) (\w+)";
-    let line_re = Regex::new(&format!("^{}(, {})* => {}$", chem, chem, chem)).unwrap();
-    let chem_re = Regex::new(chem).unwrap();
+    const CHEM: &str = r"(\d+) (\w+)";
+    lazy_static! {
+        static ref LINE_RE: Regex =
+            Regex::new(&format!("^{}(, {})* => {}$", CHEM, CHEM, CHEM)).unwrap();
+        static ref CHEM_RE: Regex = Regex::new(CHEM).unwrap();
+    }
 
     for line in input.lines() {
         let line = line.unwrap();
         assert!(
-            line_re.is_match(&line),
+            LINE_RE.is_match(&line),
             "Line doesn't match expected format"
         );
 
-        let mut chems = read_chemicals(&line, &chem_re);
+        let mut chems = read_chemicals(&line, &CHEM_RE);
         let (target, amount) = chems.pop().unwrap();
         assert!(!chems.is_empty());
 

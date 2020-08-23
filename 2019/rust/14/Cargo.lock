@@ -18,6 +18,7 @@ name = "day-14"
 version = "0.1.0"
 dependencies = [
  "common",
+ "lazy_static",
  "regex",
 ]
 

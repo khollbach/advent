@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use num::integer;
 use regex::Regex;
 use std::cmp::Ordering;
@@ -6,13 +7,15 @@ use std::io::prelude::*;
 
 pub fn read_input<R: BufRead>(input: R) -> Vec<Moon> {
     const I: &str = r"(-?\d+)";
-    let re = Regex::new(&format!("^<x={}, y={}, z={}>$", I, I, I)).unwrap();
+    lazy_static! {
+        static ref RE: Regex = Regex::new(&format!("^<x={}, y={}, z={}>$", I, I, I)).unwrap();
+    }
 
     let moons: Vec<_> = input
         .lines()
         .map(|line| {
             let line = line.unwrap();
-            let caps = re.captures(&line).unwrap();
+            let caps = RE.captures(&line).unwrap();
             let x: i64 = caps[1].parse().unwrap();
             let y: i64 = caps[2].parse().unwrap();
             let z: i64 = caps[3].parse().unwrap();
