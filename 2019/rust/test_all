@@ -2,7 +2,7 @@
 
 set -e
 
-for i in $(seq 1 25); do
+for i in cpu common $(seq 1 25); do
     cd "$i"
     cargo test "$@"
     cd ..
