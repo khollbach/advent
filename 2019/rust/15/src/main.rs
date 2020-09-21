@@ -1,5 +1,5 @@
 use cpu::{read_mem, CPU};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 
@@ -8,7 +8,7 @@ fn main() {
 
     let grid = map_grid(mem);
 
-    let shortest = shortest_path(grid);
+    let shortest = shortest_path(grid).unwrap();
 
     println!("{}", shortest);
 }
@@ -20,7 +20,7 @@ type Point = (i32, i32);
 
 const ORIGIN: Point = (0, 0);
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Tile {
     Wall,
     Floor,
@@ -28,7 +28,7 @@ enum Tile {
     Target,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Dir {
     N,
     E,
@@ -87,6 +87,13 @@ impl Robot {
 
         // todo do I need to do anything with cpu?
         //    > do I need it at all??
+        //
+        // Ok, so the thread will currently panic, since there's
+        // no way to stop the CPU running once it starts. Specifically,
+        // the `input` closure will try to receive from a closed channel.
+        //
+        // We should add a way to stop the CPU from another thread
+        // and use that to properly clean up, automatically upon `drop`.
 
         let _cpu = thread::spawn(move || {
             CPU::new(mem)
@@ -140,6 +147,9 @@ impl Robot {
 }
 
 /// DFS to map the entire enclosure using the robot.
+///
+/// Could run infinitely if the enclosure is infinite. In that case,
+/// we would want to implement an interative-deepening DFS instead.
 fn map_grid(mem: Vec<i64>) -> Grid {
     /// Visit the tile the robot is currently standing on, and then recursively visit all neighbors
     /// that aren't already visited. (If a neighbor is a wall tile, visit it but don't recurse,
@@ -176,6 +186,31 @@ fn map_grid(mem: Vec<i64>) -> Grid {
 }
 
 /// Use a BFS to find the shortest path from the origin to the target.
-fn shortest_path(_grid: Grid) -> u32 {
-    todo!()
+///
+/// Requires that grid is enclosed in `Wall` tiles, otherwise this may
+/// panic when accesses tiles that do not exist at the edges of the grid.
+///
+/// If no path exists after exhausting the search space, return None.
+fn shortest_path(grid: Grid) -> Option<u32> {
+    let mut visited = HashSet::new();
+
+    let mut queue = VecDeque::new();
+    queue.push_back((ORIGIN, 0));
+    while let Some((p, dist)) = queue.pop_front() {
+        // Are we done?
+        if grid[&p] == Tile::Target {
+            return Some(dist);
+        }
+
+        // Visit p and enqueue its neighbors.
+        visited.insert(p);
+        for &dir in &NESW {
+            let p2 = Dir::step(p, dir);
+            if grid[&p2] != Tile::Wall && !visited.contains(&p2) {
+                queue.push_back((p2, dist + 1));
+            }
+        }
+    }
+
+    None
 }
