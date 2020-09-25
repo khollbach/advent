@@ -1,9 +1,8 @@
 use cpu::{read_mem, CPU};
-use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 fn main() {
     let mem = read_mem().unwrap();
@@ -14,8 +13,8 @@ fn main() {
 
 /// Return the number of blocks that would be initially drawn to the screen.
 fn num_blocks(mem: Vec<i64>) -> usize {
-    let screen = Rc::new(RefCell::new(Screen::new()));
-    let mut adapter = ScreenAdapter::new(Rc::clone(&screen));
+    let screen = Arc::new(Mutex::new(Screen::new()));
+    let mut adapter = ScreenAdapter::new(Arc::clone(&screen));
 
     CPU::new(mem)
         .output(move |x| {
@@ -24,7 +23,8 @@ fn num_blocks(mem: Vec<i64>) -> usize {
         .run();
 
     let num = screen
-        .borrow()
+        .lock()
+        .unwrap()
         .map
         .values()
         .filter(|&&t| t == Tile::Block)
@@ -36,20 +36,20 @@ fn num_blocks(mem: Vec<i64>) -> usize {
 ///
 /// Each turn, the AI moves the paddle in the direction of the ball.
 fn final_score(mut mem: Vec<i64>) -> i64 {
-    let screen = Rc::new(RefCell::new(Screen::new()));
-    let mut adapter = ScreenAdapter::new(Rc::clone(&screen));
+    let screen = Arc::new(Mutex::new(Screen::new()));
+    let mut adapter = ScreenAdapter::new(Arc::clone(&screen));
 
     // Insert 2 quarters.
     mem[0] = 2;
 
-    let screen2 = Rc::clone(&screen);
+    let screen2 = Arc::clone(&screen);
     CPU::new(mem)
         .output(move |x| {
             adapter.receive(x);
         })
         .input(move || {
-            let ball = screen2.borrow().ball.unwrap().x;
-            let paddle = screen2.borrow().paddle.unwrap().x;
+            let ball = screen2.lock().unwrap().ball.unwrap().x;
+            let paddle = screen2.lock().unwrap().paddle.unwrap().x;
 
             match paddle.cmp(&ball) {
                 Ordering::Less => 1,
@@ -59,19 +59,19 @@ fn final_score(mut mem: Vec<i64>) -> i64 {
         })
         .run();
 
-    let score = screen.borrow().score.unwrap();
+    let score = screen.lock().unwrap().score.unwrap();
     score
 }
 
 /// Batch up partial messages in groups of 3, and decode them to draw to the screen.
 #[derive(Debug)]
 struct ScreenAdapter {
-    screen: Rc<RefCell<Screen>>,
+    screen: Arc<Mutex<Screen>>,
     msg_buf: Vec<i64>,
 }
 
 impl ScreenAdapter {
-    fn new(screen: Rc<RefCell<Screen>>) -> Self {
+    fn new(screen: Arc<Mutex<Screen>>) -> Self {
         Self {
             screen,
             msg_buf: vec![],
@@ -95,10 +95,11 @@ impl ScreenAdapter {
     /// Process a message to draw to the screen (or update the score).
     fn process_msg(&mut self, x: i64, y: i64, tile_id: i64) {
         if x == -1 && y == 0 {
-            self.screen.borrow_mut().score = Some(tile_id);
+            self.screen.lock().unwrap().score = Some(tile_id);
         } else {
             self.screen
-                .borrow_mut()
+                .lock()
+                .unwrap()
                 .draw(Point { x, y }, Tile::new(tile_id));
         }
     }

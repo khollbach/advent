@@ -1,7 +1,6 @@
 use cpu::{read_mem, CPU};
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::thread::{self, JoinHandle};
+use std::sync::mpsc::{self, Receiver, RecvError, SendError, Sender};
 
 fn main() {
     let mem = read_mem().unwrap();
@@ -66,73 +65,63 @@ impl Dir {
 
 /// The robot.
 struct Robot {
-    pos: Point,
-    tile: Tile,
+    pub pos: Point,
+    pub tile: Tile,
 
-    /// The cpu runs in its own thread.
     /// Instructions and their sensor responses are handled via channels.
-    _cpu: JoinHandle<()>,
     instructions: Sender<Dir>,
     sensor: Receiver<Tile>,
 }
 
 impl Robot {
     /// Spawns a new thread running the robot's cpu.
-    fn new(mem: Vec<i64>) -> Self {
-        let pos = ORIGIN;
-        let tile = Tile::Floor;
-
+    pub fn new(mem: Vec<i64>) -> Self {
         let (instructions, instr_rx) = mpsc::channel();
         let (sensor_sx, sensor) = mpsc::channel();
 
-        // todo do I need to do anything with cpu?
-        //    > do I need it at all??
-        //
-        // Ok, so the thread will currently panic, since there's
-        // no way to stop the CPU running once it starts. Specifically,
-        // the `input` closure will try to receive from a closed channel.
-        //
-        // We should add a way to stop the CPU from another thread
-        // and use that to properly clean up, automatically upon `drop`.
-
-        let _cpu = thread::spawn(move || {
-            CPU::new(mem)
-                .input(move || {
-                    use Dir::*;
-                    match instr_rx.recv().unwrap() {
+        // The spawned thread is cleaned up when the IO channels are closed;
+        // i.e. when this Robot is dropped.
+        CPU::new(mem)
+            .input_or_halt(move || {
+                use Dir::*;
+                match instr_rx.recv() {
+                    Ok(d) => Some(match d {
                         // Note the unconventional encoding.
                         N => 1,
                         S => 2,
                         W => 3,
                         E => 4,
-                    }
-                })
-                .output(move |x| {
-                    use Tile::*;
-                    let tile = match x {
-                        0 => Wall,
-                        1 => Floor,
-                        2 => Target,
-                        _ => panic!("Invalid sensor output: {}", x),
-                    };
-                    sensor_sx.send(tile).unwrap();
-                })
-                .run();
-        });
+                    }),
+                    Err(RecvError) => None,
+                }
+            })
+            .output_or_halt(move |x| {
+                use Tile::*;
+                let tile = match x {
+                    0 => Wall,
+                    1 => Floor,
+                    2 => Target,
+                    _ => panic!("Invalid sensor output: {}", x),
+                };
+                match sensor_sx.send(tile) {
+                    Ok(()) => Some(()),
+                    Err(SendError(_tile)) => None,
+                }
+            })
+            .run_async();
 
         Self {
-            pos,
-            tile,
+            pos: ORIGIN,
+            tile: Tile::Floor,
             instructions,
             sensor,
-            _cpu,
         }
     }
 
     /// Try to move onto an adjacent tile. Return true if successful.
     ///
     /// Only fails if the destination tile is a wall, in which case the robot does not move.
-    fn move_(&mut self, d: Dir) -> bool {
+    pub fn move_(&mut self, d: Dir) -> bool {
         self.instructions.send(d).unwrap();
 
         match self.sensor.recv().unwrap() {

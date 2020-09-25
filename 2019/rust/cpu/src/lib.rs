@@ -3,6 +3,7 @@
 use builder::CPUBuilder;
 use instruction::{Instruction, Operation, ParamMode, ParamType};
 use memory::Memory;
+use std::thread;
 
 mod builder;
 mod instruction;
@@ -28,9 +29,12 @@ pub struct CPU {
     /// relative-mode. See Day 9 for more.
     relative_base: i64,
 
-    /// I/O mechanism.
-    get_input: Box<dyn FnMut() -> i64>,
-    send_output: Box<dyn FnMut(i64)>,
+    /// I/O mechanism. I/O is described in Day 5.
+    ///
+    /// If an IO function returns None, we halt. This is the way to signal that we should halt from
+    /// another thread.
+    get_input: Box<dyn Send + FnMut() -> Option<i64>>,
+    send_output: Box<dyn Send + FnMut(i64) -> Option<()>>,
 }
 
 impl CPU {
@@ -41,6 +45,7 @@ impl CPU {
     }
 
     /// Execute instructions until a Halt. Return the final value at memory address 0.
+    ///
     /// Consumes the CPU.
     pub fn run(mut self) -> i64 {
         self.run_internal();
@@ -48,13 +53,27 @@ impl CPU {
         self.mem.get(0)
     }
 
-    /// Execute instructions until a Halt.
+    /// Spawn a thread running this CPU. Ignores the return value if any.
+    ///
+    /// Especially useful if combined with channels for IO. See e.g. Day 15.
+    pub fn run_async(self) {
+        thread::spawn(move || {
+            self.run();
+        });
+    }
+
+    /// Execute instructions until a Halt instruction, or until an IO function returns None.
+    ///
+    /// This helper function is handy for unit tests, so we can inspect memory after running. (It
+    /// doesn't consume the CPU.)
     fn run_internal(&mut self) {
         while self.step() {}
     }
 
     /// Execute one instruction and update the program counter.
-    /// Return false only if execution should halt due to a Halt instruction.
+    ///
+    /// Return false if execution should halt due to a Halt instruction, or due to an IO function
+    /// returning None.
     fn step(&mut self) -> bool {
         use Operation::*;
 
@@ -68,12 +87,16 @@ impl CPU {
             Multiply => {
                 self.mem.set(args[2], args[0] * args[1]);
             }
-            GetInput => {
-                self.mem.set(args[0], (self.get_input)());
-            }
-            SendOutput => {
-                (self.send_output)(args[0]);
-            }
+            GetInput => match (self.get_input)() {
+                Some(input) => {
+                    self.mem.set(args[0], input);
+                }
+                None => return false,
+            },
+            SendOutput => match (self.send_output)(args[0]) {
+                Some(()) => (),
+                None => return false,
+            },
             JumpIfTrue => {
                 if args[0] != 0 {
                     self.pc = args[1];
@@ -217,13 +240,12 @@ mod tests {
     }
 
     mod io {
-        use std::cell::RefCell;
-        use std::rc::Rc;
+        use std::sync::{Arc, Mutex};
 
         use super::*;
 
         fn test_io(mem: Vec<i64>, input: Vec<i64>, expected_output: Vec<i64>) {
-            let actual_output = Rc::new(RefCell::new(vec![]));
+            let actual_output = Arc::new(Mutex::new(vec![]));
 
             let mut cpu = CPU::new(mem)
                 .input_iter(input.into_iter())
@@ -231,7 +253,7 @@ mod tests {
                 .finish();
             cpu.run_internal();
 
-            assert_eq!(expected_output, *actual_output.borrow());
+            assert_eq!(expected_output, *actual_output.lock().unwrap());
         }
 
         fn test_many(mem: Vec<i64>, io_pairs: Vec<(Vec<i64>, Vec<i64>)>) {

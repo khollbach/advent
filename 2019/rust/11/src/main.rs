@@ -1,8 +1,7 @@
 use cpu::{read_mem, CPU};
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 fn main() {
     let mem = read_mem().unwrap();
@@ -23,41 +22,45 @@ fn paint_hull(mem: Vec<i64>, origin_color: i64) -> HashMap<Point, i64> {
 
     // The painted grid the robot moves around on.
     // position -> color (0: black, 1: white)
-    let map = Rc::new(RefCell::new(HashMap::new()));
-    let imap = Rc::clone(&map);
-    let omap = Rc::clone(&map);
+    let map = Arc::new(Mutex::new(HashMap::new()));
+    let imap = Arc::clone(&map);
+    let omap = Arc::clone(&map);
 
-    map.borrow_mut().insert(Point::origin(), origin_color);
+    map.lock().unwrap().insert(Point::origin(), origin_color);
 
-    let rob = Rc::new(RefCell::new(Robot::new()));
-    let irob = Rc::clone(&rob);
-    let orob = Rc::clone(&rob);
+    let rob = Arc::new(Mutex::new(Robot::new()));
+    let irob = Arc::clone(&rob);
+    let orob = Arc::clone(&rob);
 
     let mut num_outputs = 0;
     CPU::new(mem)
         .input(move || {
             // Black by default.
-            *imap.borrow().get(&irob.borrow().pos).unwrap_or(&0)
+            *imap
+                .lock()
+                .unwrap()
+                .get(&irob.lock().unwrap().pos)
+                .unwrap_or(&0)
         })
         .output(move |x| {
             assert!(x == 0 || x == 1, "Invalid robot output: {}", x);
 
             if num_outputs % 2 == 0 {
                 // Paint a tile.
-                omap.borrow_mut().insert(orob.borrow().pos, x);
+                omap.lock().unwrap().insert(orob.lock().unwrap().pos, x);
             } else {
                 match x {
-                    0 => orob.borrow_mut().turn_left(),
-                    1 => orob.borrow_mut().turn_right(),
+                    0 => orob.lock().unwrap().turn_left(),
+                    1 => orob.lock().unwrap().turn_right(),
                     _ => unreachable!(),
                 };
-                orob.borrow_mut().step_forward();
+                orob.lock().unwrap().step_forward();
             }
             num_outputs += 1;
         })
         .run();
 
-    let ref_mut = &mut map.borrow_mut();
+    let ref_mut = &mut map.lock().unwrap();
     mem::replace(ref_mut, HashMap::new())
 }
 

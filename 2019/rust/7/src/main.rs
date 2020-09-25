@@ -1,8 +1,6 @@
 use cpu::{read_mem, CPU};
 use factorial::Factorial;
 use rayon::prelude::*;
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
@@ -68,15 +66,16 @@ fn thruster_signal_1(program: &[i64], phase_settings: &[i64]) -> i64 {
     let mut signal = 0;
 
     for &phase in phase_settings {
-        let output = Rc::new(RefCell::new(vec![]));
+        let output = Arc::new(Mutex::new(vec![]));
 
         CPU::new(Vec::from(program))
             .input_iter(vec![phase, signal].into_iter())
             .output_vec(&output)
             .run();
 
-        assert!(output.borrow().len() == 1);
-        signal = output.borrow()[0];
+        let output = output.lock().unwrap();
+        assert!(output.len() == 1);
+        signal = output[0];
     }
 
     signal

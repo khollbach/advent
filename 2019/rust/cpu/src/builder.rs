@@ -1,7 +1,6 @@
 use super::memory::Memory;
 use super::CPU;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 /// This is the 'builder' struct for a CPU, created by CPU::new(). You can supply optional
 /// parameters via their corresponding methods, and then finish building and run the CPU with the
@@ -16,8 +15,8 @@ use std::rc::Rc;
 pub struct CPUBuilder {
     mem: Memory,
     args: Option<(i64, i64)>,
-    get_input: Option<Box<dyn FnMut() -> i64>>,
-    send_output: Option<Box<dyn FnMut(i64)>>,
+    get_input: Option<Box<dyn Send + FnMut() -> Option<i64>>>,
+    send_output: Option<Box<dyn Send + FnMut(i64) -> Option<()>>>,
 }
 
 impl CPUBuilder {
@@ -41,10 +40,10 @@ impl CPUBuilder {
         }
     }
 
-    /// Set input function. (Optional.) I/O is described in Day 5.
-    pub fn input<F: 'static>(self, get_input: F) -> Self
+    /// See `input`.
+    pub fn input_or_halt<F: 'static>(self, get_input: F) -> Self
     where
-        F: FnMut() -> i64,
+        F: Send + FnMut() -> Option<i64>,
     {
         assert!(self.get_input.is_none());
         Self {
@@ -53,18 +52,28 @@ impl CPUBuilder {
         }
     }
 
+    /// Set input function (optional).
+    ///
+    /// See `CPU.get_input` for more.
+    pub fn input<F: 'static>(self, mut get_input: F) -> Self
+    where
+        F: Send + FnMut() -> i64,
+    {
+        self.input_or_halt(move || Some(get_input()))
+    }
+
     /// Use an iterator as the input function.
     pub fn input_iter<I: 'static>(self, mut input_iter: I) -> Self
     where
-        I: Iterator<Item = i64>,
+        I: Send + Iterator<Item = i64>,
     {
         self.input(move || input_iter.next().unwrap())
     }
 
-    /// Set output function. (Optional.) I/O is described in Day 5.
-    pub fn output<F: 'static>(self, send_output: F) -> Self
+    /// See `output`.
+    pub fn output_or_halt<F: 'static>(self, send_output: F) -> Self
     where
-        F: FnMut(i64),
+        F: Send + FnMut(i64) -> Option<()>,
     {
         assert!(self.send_output.is_none());
         Self {
@@ -73,10 +82,22 @@ impl CPUBuilder {
         }
     }
 
-    /// Use a vector as the output stream. Output values will be appended to the existing vector.
-    pub fn output_vec(self, output_vec: &Rc<RefCell<Vec<i64>>>) -> Self {
-        let clone = Rc::clone(output_vec);
-        self.output(move |x| clone.borrow_mut().push(x))
+    /// Set ouptut function (optional).
+    ///
+    /// See `CPU.send_output` for more.
+    pub fn output<F: 'static>(self, mut send_output: F) -> Self
+    where
+        F: Send + FnMut(i64),
+    {
+        self.output_or_halt(move |x| Some(send_output(x)))
+    }
+
+    /// Use a vector to collect the output stream.
+    ///
+    /// Output values are appended to the existing vector.
+    pub fn output_vec(self, output_vec: &Arc<Mutex<Vec<i64>>>) -> Self {
+        let clone = Arc::clone(output_vec);
+        self.output(move |x| clone.lock().unwrap().push(x))
     }
 
     /// Finish building; returns a CPU, ready to execute.
@@ -90,14 +111,17 @@ impl CPUBuilder {
 
         let get_input = match self.get_input {
             Some(f) => f,
-            // Throw at runtime if input is requested, but no closure was given.
+            // Throw at runtime if input is requested, since no closure was given.
             None => Box::new(|| panic!("No input mechanism specified.")),
         };
 
         let send_output = match self.send_output {
             Some(f) => f,
             // Default to stdout if no closure was given.
-            None => Box::new(|x| println!("{}", x)),
+            None => Box::new(|x| {
+                println!("{}", x);
+                Some(())
+            }),
         };
 
         CPU {
@@ -109,10 +133,17 @@ impl CPUBuilder {
         }
     }
 
-    /// Finish building and execute the program.
+    /// Convenience method to finish building and run the CPU.
     pub fn run(self) -> i64 {
         let cpu = self.finish();
 
         cpu.run()
+    }
+
+    /// See `run`, and `CPU.run_async`.
+    pub fn run_async(self) {
+        let cpu = self.finish();
+
+        cpu.run_async()
     }
 }
