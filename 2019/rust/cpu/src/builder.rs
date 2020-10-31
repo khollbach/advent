@@ -3,10 +3,10 @@ use super::CPU;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-/// This is the 'builder' struct for a CPU.
+/// This is the 'builder' struct for a [`CPU`].
 ///
-/// Supply optional parameters via their corresponding methods. Finish building the CPU with the
-/// finish() method.
+/// Supply optional parameters via their corresponding methods. Finish building the CPU with
+/// [`finish()`](Self::finish).
 ///
 /// ```
 /// use cpu::CPUBuilder;
@@ -81,7 +81,7 @@ impl<I, O> CPUBuilder<I, O> {
 impl<O> CPUBuilder<(), O> {
     /// Set input function (optional).
     ///
-    /// See `CPU.get_input` for details.
+    /// See the `get_input` field of [`CPU`] for details.
     pub fn input(
         self,
         mut get_input: impl FnMut() -> i64,
@@ -109,7 +109,7 @@ impl<O> CPUBuilder<(), O> {
 impl<I> CPUBuilder<I, ()> {
     /// Set output function (optional).
     ///
-    /// See `CPU.send_output` for details.
+    /// See the `send_output` field of [`CPU`] for details.
     pub fn output(
         self,
         mut send_output: impl FnMut(i64),

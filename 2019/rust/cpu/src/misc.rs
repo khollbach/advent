@@ -9,8 +9,11 @@ pub fn read_mem() -> Result<Vec<i64>, Box<dyn Error>> {
     parse_mem(io::stdin().lock())
 }
 
-/// Read one line, and parse it as a comma-separated list of integers: e.g. `1,2,-54,0`.
-pub fn parse_mem<R: BufRead>(input: R) -> Result<Vec<i64>, Box<dyn Error>> {
+// todo: why doesn't this just take &str ????
+
+/// Read one line from a BufRead, and parse it as a comma-separated list of integers: e.g.
+/// `1,2,-54,0`.
+pub fn parse_mem(input: impl BufRead) -> Result<Vec<i64>, Box<dyn Error>> {
     let line = get_line(input)?;
 
     let mut vec = vec![];

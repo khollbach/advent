@@ -1,3 +1,5 @@
+//! An implementation of the intcode computer from Advent of Code 2019.
+
 #![feature(or_patterns)]
 
 use instruction::{Instruction, Operation, ParamMode, ParamType};
@@ -43,22 +45,9 @@ pub struct CPU<I, O> {
 impl CPU<fn() -> Option<i64>, fn(i64) -> Option<()>> {
     /// Create a new intcode computer with the given starting memory.
     ///
-    /// For more fine-grained control, see CPUBuilder.
+    /// For more fine-grained control, see [`CPUBuilder`].
     pub fn new(initial_memory: Vec<i64>) -> Self {
         CPUBuilder::new(initial_memory).default_io()
-    }
-}
-
-impl<I, O> CPU<I, O>
-where
-    I: 'static + Send + FnMut() -> Option<i64>,
-    O: 'static + Send + FnMut(i64) -> Option<()>,
-{
-    /// Spawn a thread running this CPU. The thread's return value is the CPU's return value.
-    ///
-    /// Especially useful if combined with channels for IO. See e.g. Day 15.
-    pub fn run_async(self) -> JoinHandle<i64> {
-        thread::spawn(|| self.run())
     }
 }
 
@@ -191,6 +180,20 @@ where
         let offset = 1 + instr.params.len() as i64;
 
         self.pc += offset;
+    }
+}
+
+impl<I, O> CPU<I, O>
+where
+    I: 'static + Send + FnMut() -> Option<i64>,
+    O: 'static + Send + FnMut(i64) -> Option<()>,
+{
+    /// Spawn a thread running this CPU. The thread's returned value will be the CPU's return
+    /// value.
+    ///
+    /// Especially useful if combined with channels for IO. See, e.g., Day 15.
+    pub fn run_async(self) -> JoinHandle<i64> {
+        thread::spawn(|| self.run())
     }
 }
 

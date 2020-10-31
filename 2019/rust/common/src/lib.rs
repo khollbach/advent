@@ -11,7 +11,7 @@ pub fn get_line<R: BufRead>(input: R) -> io::Result<String> {
     input.lines().next().unwrap_or_else(|| {
         Err(io::Error::new(
             io::ErrorKind::UnexpectedEof,
-            "End of standard input.",
+            "End of input.",
         ))
     })
 }
