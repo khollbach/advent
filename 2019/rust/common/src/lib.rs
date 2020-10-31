@@ -6,7 +6,7 @@ pub fn read_line() -> io::Result<String> {
     get_line(io::stdin().lock())
 }
 
-/// Read one line from the input source.
+/// Read one line from the input source. No trailing newline.
 pub fn get_line<R: BufRead>(input: R) -> io::Result<String> {
     input.lines().next().unwrap_or_else(|| {
         Err(io::Error::new(

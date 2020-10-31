@@ -1,4 +1,4 @@
-use cpu::{read_mem, CPU};
+use cpu::{read_mem, CPUBuilder};
 
 fn main() {
     let mem = read_mem().unwrap();
@@ -10,7 +10,7 @@ fn main() {
 }
 
 fn part1(mem: Vec<i64>) -> i64 {
-    CPU::new(mem).args(12, 2).run()
+    CPUBuilder::new(mem).args(12, 2).default_io().run()
 }
 
 fn part2(mem: Vec<i64>) -> (i64, i64) {
@@ -18,7 +18,8 @@ fn part2(mem: Vec<i64>) -> (i64, i64) {
 
     for noun in 0..100 {
         for verb in 0..100 {
-            if CPU::new(mem.clone()).args(noun, verb).run() == TARGET {
+            let cpu = CPUBuilder::new(mem.clone()).args(noun, verb).default_io();
+            if cpu.run() == TARGET {
                 return (noun, verb);
             }
         }

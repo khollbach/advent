@@ -1,4 +1,4 @@
-use cpu::{read_mem, CPU};
+use cpu::{read_mem, CPUBuilder};
 use std::collections::HashMap;
 use std::mem;
 use std::sync::{Arc, Mutex};
@@ -23,41 +23,37 @@ fn paint_hull(mem: Vec<i64>, origin_color: i64) -> HashMap<Point, i64> {
     // The painted grid the robot moves around on.
     // position -> color (0: black, 1: white)
     let map = Arc::new(Mutex::new(HashMap::new()));
-    let imap = Arc::clone(&map);
-    let omap = Arc::clone(&map);
-
     map.lock().unwrap().insert(Point::origin(), origin_color);
 
     let rob = Arc::new(Mutex::new(Robot::new()));
-    let irob = Arc::clone(&rob);
-    let orob = Arc::clone(&rob);
 
     let mut num_outputs = 0;
-    CPU::new(mem)
-        .input(move || {
+
+    CPUBuilder::new(mem)
+        .input(|| {
             // Black by default.
-            *imap
-                .lock()
+            *map.lock()
                 .unwrap()
-                .get(&irob.lock().unwrap().pos)
+                .get(&rob.lock().unwrap().pos)
                 .unwrap_or(&0)
         })
-        .output(move |x| {
+        .output(|x| {
             assert!(x == 0 || x == 1, "Invalid robot output: {}", x);
 
             if num_outputs % 2 == 0 {
                 // Paint a tile.
-                omap.lock().unwrap().insert(orob.lock().unwrap().pos, x);
+                map.lock().unwrap().insert(rob.lock().unwrap().pos, x);
             } else {
                 match x {
-                    0 => orob.lock().unwrap().turn_left(),
-                    1 => orob.lock().unwrap().turn_right(),
+                    0 => rob.lock().unwrap().turn_left(),
+                    1 => rob.lock().unwrap().turn_right(),
                     _ => unreachable!(),
                 };
-                orob.lock().unwrap().step_forward();
+                rob.lock().unwrap().step_forward();
             }
             num_outputs += 1;
         })
+        .finish()
         .run();
 
     let ref_mut = &mut map.lock().unwrap();
@@ -66,8 +62,8 @@ fn paint_hull(mem: Vec<i64>, origin_color: i64) -> HashMap<Point, i64> {
 
 fn print_grid(map: &HashMap<Point, i64>) {
     let min_x = map.keys().map(|&p| p.x).min().unwrap();
-    let min_y = map.keys().map(|&p| p.y).min().unwrap();
     let max_x = map.keys().map(|&p| p.x).max().unwrap();
+    let min_y = map.keys().map(|&p| p.y).min().unwrap();
     let max_y = map.keys().map(|&p| p.y).max().unwrap();
 
     for y in (min_y..=max_y).rev() {

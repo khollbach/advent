@@ -1,4 +1,4 @@
-use cpu::{read_mem, CPU};
+use cpu::{read_mem, CPUBuilder};
 
 fn main() {
     let mem = read_mem().unwrap();
@@ -8,9 +8,17 @@ fn main() {
 }
 
 fn part1(mem: Vec<i64>) {
-    CPU::new(mem).input_iter(vec![1].into_iter()).run();
+    CPUBuilder::new(mem)
+        .input_iter(vec![1].into_iter())
+        .default_out()
+        .finish()
+        .run();
 }
 
 fn part2(mem: Vec<i64>) {
-    CPU::new(mem).input_iter(vec![2].into_iter()).run();
+    CPUBuilder::new(mem)
+        .input_iter(vec![2].into_iter())
+        .default_out()
+        .finish()
+        .run();
 }

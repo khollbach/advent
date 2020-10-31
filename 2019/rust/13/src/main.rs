@@ -1,8 +1,9 @@
-use cpu::{read_mem, CPU};
+use cpu::{read_mem, CPUBuilder};
+use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
 
 fn main() {
     let mem = read_mem().unwrap();
@@ -13,22 +14,19 @@ fn main() {
 
 /// Return the number of blocks that would be initially drawn to the screen.
 fn num_blocks(mem: Vec<i64>) -> usize {
-    let screen = Arc::new(Mutex::new(Screen::new()));
-    let mut adapter = ScreenAdapter::new(Arc::clone(&screen));
+    let mut screen = Screen::new();
+    let mut adapter = ScreenAdapter::new(&mut screen);
 
-    CPU::new(mem)
-        .output(move |x| {
+    CPUBuilder::new(mem)
+        .default_in()
+        .output(|x| {
             adapter.receive(x);
         })
+        .finish()
         .run();
 
-    let num = screen
-        .lock()
-        .unwrap()
-        .map
-        .values()
-        .filter(|&&t| t == Tile::Block)
-        .count();
+    let num = screen.grid.values().filter(|&&t| t == Tile::Block).count();
+
     num
 }
 
@@ -36,42 +34,42 @@ fn num_blocks(mem: Vec<i64>) -> usize {
 ///
 /// Each turn, the AI moves the paddle in the direction of the ball.
 fn final_score(mut mem: Vec<i64>) -> i64 {
-    let screen = Arc::new(Mutex::new(Screen::new()));
-    let mut adapter = ScreenAdapter::new(Arc::clone(&screen));
+    let mut screen = Screen::new();
+    let adapter = Rc::new(RefCell::new(ScreenAdapter::new(&mut screen)));
 
     // Insert 2 quarters.
     mem[0] = 2;
 
-    let screen2 = Arc::clone(&screen);
-    CPU::new(mem)
-        .output(move |x| {
-            adapter.receive(x);
+    CPUBuilder::new(mem)
+        .output(|x| {
+            adapter.borrow_mut().receive(x);
         })
-        .input(move || {
-            let ball = screen2.lock().unwrap().ball.unwrap().x;
-            let paddle = screen2.lock().unwrap().paddle.unwrap().x;
+        .input(|| {
+            let ball = adapter.borrow().screen.ball.unwrap();
+            let paddle = adapter.borrow().screen.paddle.unwrap();
 
-            match paddle.cmp(&ball) {
-                Ordering::Less => 1,
+            match ball.x.cmp(&paddle.x) {
+                Ordering::Less => -1,
                 Ordering::Equal => 0,
-                Ordering::Greater => -1,
+                Ordering::Greater => 1,
             }
         })
+        .finish()
         .run();
 
-    let score = screen.lock().unwrap().score.unwrap();
+    let score = screen.score.unwrap();
     score
 }
 
 /// Batch up partial messages in groups of 3, and decode them to draw to the screen.
 #[derive(Debug)]
-struct ScreenAdapter {
-    screen: Arc<Mutex<Screen>>,
+struct ScreenAdapter<'a> {
+    screen: &'a mut Screen,
     msg_buf: Vec<i64>,
 }
 
-impl ScreenAdapter {
-    fn new(screen: Arc<Mutex<Screen>>) -> Self {
+impl<'a> ScreenAdapter<'a> {
+    fn new(screen: &'a mut Screen) -> Self {
         Self {
             screen,
             msg_buf: vec![],
@@ -95,12 +93,10 @@ impl ScreenAdapter {
     /// Process a message to draw to the screen (or update the score).
     fn process_msg(&mut self, x: i64, y: i64, tile_id: i64) {
         if x == -1 && y == 0 {
-            self.screen.lock().unwrap().score = Some(tile_id);
+            self.screen.score = Some(tile_id);
         } else {
-            self.screen
-                .lock()
-                .unwrap()
-                .draw(Point { x, y }, Tile::new(tile_id));
+            assert!(x >= 0 && y >= 0);
+            self.screen.draw(Point { x, y }, Tile::new(tile_id));
         }
     }
 }
@@ -108,20 +104,20 @@ impl ScreenAdapter {
 /// Record tiles drawn to the screen.
 #[derive(Debug)]
 struct Screen {
-    map: HashMap<Point, Tile>,
+    grid: HashMap<Point, Tile>,
     score: Option<i64>,
 
-    /// Stores the most-recently-drawn, visible ball (if any).
+    /// Stores the most-recently-drawn ball (if visible).
     ball: Option<Point>,
 
-    /// Stores the most-recently-drawn, visible paddle (if any).
+    /// Stores the most-recently-drawn paddle (if visible).
     paddle: Option<Point>,
 }
 
 impl Screen {
     fn new() -> Self {
         Self {
-            map: HashMap::new(),
+            grid: HashMap::new(),
             score: None,
             ball: None,
             paddle: None,
@@ -132,14 +128,16 @@ impl Screen {
     fn draw(&mut self, coords: Point, tile: Tile) {
         assert!(coords.x >= 0 && coords.y >= 0);
 
-        match self.map.get(&coords) {
+        // Overwriting the ball or paddle.
+        match self.grid.get(&coords) {
             Some(Tile::Ball) => self.ball = None,
             Some(Tile::Paddle) => self.paddle = None,
             _ => (),
         }
 
-        self.map.insert(coords, tile);
+        self.grid.insert(coords, tile);
 
+        // Writing a new ball or paddle.
         match tile {
             Tile::Ball => self.ball = Some(coords),
             Tile::Paddle => self.paddle = Some(coords),
@@ -147,25 +145,25 @@ impl Screen {
         }
     }
 
+    /// Print the grid to stdout.
     fn _render(&self) {
-        if self.map.is_empty() {
-            return;
-        }
-
         if let Some(s) = self.score {
             println!("Score: {}", s);
         };
 
-        let min_x = self.map.keys().map(|&p| p.x).min().unwrap();
-        let min_y = self.map.keys().map(|&p| p.y).min().unwrap();
-        let max_x = self.map.keys().map(|&p| p.x).max().unwrap();
-        let max_y = self.map.keys().map(|&p| p.y).max().unwrap();
+        if self.grid.is_empty() {
+            return;
+        }
+
+        let min_x = self.grid.keys().map(|&p| p.x).min().unwrap();
+        let max_x = self.grid.keys().map(|&p| p.x).max().unwrap();
+        let min_y = self.grid.keys().map(|&p| p.y).min().unwrap();
+        let max_y = self.grid.keys().map(|&p| p.y).max().unwrap();
 
         for y in min_y..=max_y {
             let line: String = (min_x..=max_x)
                 .map(|x| {
-                    let tile = self.map.get(&Point { x, y }).unwrap_or(&Tile::Unknown);
-
+                    let tile = self.grid.get(&Point { x, y }).unwrap_or(&Tile::Unknown);
                     tile.to_char()
                 })
                 .collect();
@@ -181,7 +179,7 @@ struct Point {
     y: i64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum Tile {
     Empty,
     Wall,
@@ -198,7 +196,6 @@ enum Tile {
 impl Tile {
     fn new(tile_id: i64) -> Self {
         use Tile::*;
-
         match tile_id {
             0 => Empty,
             1 => Wall,
@@ -211,7 +208,6 @@ impl Tile {
 
     fn to_char(self) -> char {
         use Tile::*;
-
         match self {
             Empty => ' ',
             Wall => '#',
@@ -223,7 +219,7 @@ impl Tile {
     }
 }
 
-impl fmt::Display for Tile {
+impl fmt::Debug for Tile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.to_char())
     }

@@ -1,28 +1,31 @@
 #![feature(or_patterns)]
 
-use builder::CPUBuilder;
 use instruction::{Instruction, Operation, ParamMode, ParamType};
 use memory::Memory;
 use std::thread;
+use std::thread::JoinHandle;
 
 mod builder;
 mod instruction;
 mod memory;
 mod misc;
 
+pub use builder::CPUBuilder;
 pub use misc::{parse_mem, read_mem};
 
 /// A computer emulator that can run Intcode programs.
+///
 /// ```
 /// use cpu::CPU;
+///
 /// assert_eq!(2, CPU::new(vec![1, 0, 0, 0, 99]).run());
 /// ```
-pub struct CPU {
+pub struct CPU<I, O> {
     /// The current state of memory.
     mem: Memory,
 
     /// The instruction pointer (aka "program counter"). An
-    /// index into `self.mem`. Invariant: `pc < mem.len()`.
+    /// index into `self.mem`. Invariant: `0 <= pc < mem.len()`.
     pc: i64,
 
     /// The relative base, used as a memory address offset for operations with parameters in
@@ -33,39 +36,49 @@ pub struct CPU {
     ///
     /// If an IO function returns None, we halt. This is the way to signal that we should halt from
     /// another thread.
-    get_input: Box<dyn Send + FnMut() -> Option<i64>>,
-    send_output: Box<dyn Send + FnMut(i64) -> Option<()>>,
+    get_input: I,
+    send_output: O,
 }
 
-impl CPU {
-    /// Create a new intcode computer. This follows the builder pattern; see CPUBuilder for more.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new(initial_memory: Vec<i64>) -> CPUBuilder {
-        CPUBuilder::new(initial_memory)
+impl CPU<fn() -> Option<i64>, fn(i64) -> Option<()>> {
+    /// Create a new intcode computer with the given starting memory.
+    ///
+    /// For more fine-grained control, see CPUBuilder.
+    pub fn new(initial_memory: Vec<i64>) -> Self {
+        CPUBuilder::new(initial_memory).default_io()
     }
+}
 
+impl<I, O> CPU<I, O>
+where
+    I: 'static + Send + FnMut() -> Option<i64>,
+    O: 'static + Send + FnMut(i64) -> Option<()>,
+{
+    /// Spawn a thread running this CPU. The thread's return value is the CPU's return value.
+    ///
+    /// Especially useful if combined with channels for IO. See e.g. Day 15.
+    pub fn run_async(self) -> JoinHandle<i64> {
+        thread::spawn(|| self.run())
+    }
+}
+
+impl<I, O> CPU<I, O>
+where
+    I: FnMut() -> Option<i64>,
+    O: FnMut(i64) -> Option<()>,
+{
     /// Execute instructions until a Halt. Return the final value at memory address 0.
     ///
     /// Consumes the CPU.
     pub fn run(mut self) -> i64 {
         self.run_internal();
-
         self.mem.get(0)
-    }
-
-    /// Spawn a thread running this CPU. Ignores the return value if any.
-    ///
-    /// Especially useful if combined with channels for IO. See e.g. Day 15.
-    pub fn run_async(self) {
-        thread::spawn(move || {
-            self.run();
-        });
     }
 
     /// Execute instructions until a Halt instruction, or until an IO function returns None.
     ///
-    /// This helper function is handy for unit tests, so we can inspect memory after running. (It
-    /// doesn't consume the CPU.)
+    /// This helper function is handy for unit tests, since it doesn't consume the CPU. That way we
+    /// can inspect memory afterwords.
     fn run_internal(&mut self) {
         while self.step() {}
     }
@@ -191,7 +204,7 @@ mod tests {
         /// Verify that the memory after running the program is as expected.
         /// `before` is the initial memory / program state.
         fn test_mem(before: Vec<i64>, after: Vec<i64>) {
-            let mut cpu = CPU::new(before).finish();
+            let mut cpu = CPU::new(before);
             cpu.run_internal();
             assert_eq!(after, cpu.mem._into_vec());
         }
@@ -240,22 +253,25 @@ mod tests {
     }
 
     mod io {
-        use std::sync::{Arc, Mutex};
-
         use super::*;
+        use std::cell::RefCell;
+        use std::rc::Rc;
 
+        /// Run the CPU and check the actual output against what's expected.
         fn test_io(mem: Vec<i64>, input: Vec<i64>, expected_output: Vec<i64>) {
-            let actual_output = Arc::new(Mutex::new(vec![]));
+            let actual_output = Rc::new(RefCell::new(vec![]));
 
-            let mut cpu = CPU::new(mem)
+            let mut cpu = CPUBuilder::new(mem)
                 .input_iter(input.into_iter())
-                .output_vec(&actual_output)
+                .output_vec(Rc::clone(&actual_output))
                 .finish();
+
             cpu.run_internal();
 
-            assert_eq!(expected_output, *actual_output.lock().unwrap());
+            assert_eq!(expected_output, *actual_output.borrow());
         }
 
+        /// Test many io examples for the same CPU.
         fn test_many(mem: Vec<i64>, io_pairs: Vec<(Vec<i64>, Vec<i64>)>) {
             for (input, output) in io_pairs {
                 test_io(mem.clone(), input, output);

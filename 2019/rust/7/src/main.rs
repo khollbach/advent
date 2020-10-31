@@ -1,9 +1,11 @@
-use cpu::{read_mem, CPU};
+use cpu::{read_mem, CPUBuilder};
 use factorial::Factorial;
 use rayon::prelude::*;
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
-use std::thread::{self, JoinHandle};
+use std::thread::JoinHandle;
 
 fn main() {
     let mem = read_mem().unwrap();
@@ -25,7 +27,7 @@ fn part2(program: &[i64]) -> i64 {
 /// Compute the maximum thruster signal possible, over all permutations of phase settings.
 fn best_signal<F>(program: &[i64], phase_values: &[i64], thruster_signal: F) -> i64
 where
-    F: Fn(&[i64], &[i64]) -> i64 + Sync,
+    F: Sync + Fn(&[i64], &[i64]) -> i64,
 {
     permutations(phase_values)
         .par_iter()
@@ -45,8 +47,6 @@ fn permutations(values: &[i64]) -> Vec<Vec<i64>> {
     let mut perms = Vec::with_capacity(n.factorial());
 
     for p in permutations(&values[1..]) {
-        assert!(p.len() == n - 1);
-
         for i in 0..=p.len() {
             let mut perm = Vec::with_capacity(n);
 
@@ -54,10 +54,12 @@ fn permutations(values: &[i64]) -> Vec<Vec<i64>> {
             perm.push(values[0]);
             perm.extend(&p[i..]);
 
+            assert!(perm.len() == n);
             perms.push(perm);
         }
     }
 
+    assert!(perms.len() == n.factorial());
     perms
 }
 
@@ -66,16 +68,16 @@ fn thruster_signal_1(program: &[i64], phase_settings: &[i64]) -> i64 {
     let mut signal = 0;
 
     for &phase in phase_settings {
-        let output = Arc::new(Mutex::new(vec![]));
+        let output = Rc::new(RefCell::new(vec![]));
 
-        CPU::new(Vec::from(program))
+        CPUBuilder::new(Vec::from(program))
             .input_iter(vec![phase, signal].into_iter())
-            .output_vec(&output)
+            .output_vec(Rc::clone(&output))
+            .finish()
             .run();
 
-        let output = output.lock().unwrap();
-        assert!(output.len() == 1);
-        signal = output[0];
+        assert!(output.borrow().len() == 1);
+        signal = output.borrow()[0];
     }
 
     signal
@@ -85,6 +87,8 @@ fn thruster_signal_1(program: &[i64], phase_settings: &[i64]) -> i64 {
 fn thruster_signal_2(program: &[i64], phase_settings: &[i64]) -> i64 {
     let n = phase_settings.len();
 
+    // The Arc/Mutex's here actually shouldn't be needed at all; but it would be a pain to divide
+    // up ownership of the channels precisely in a loop. So we just slap Arc's on them :)
     let chans: Vec<_> = (0..n)
         .map(|_| channel())
         .map(|(sx, rx)| (Arc::new(Mutex::new(sx)), Arc::new(Mutex::new(rx))))
@@ -100,7 +104,12 @@ fn thruster_signal_2(program: &[i64], phase_settings: &[i64]) -> i64 {
         let (_, rx) = &chans[i];
         let (sx, _) = &chans[(i + 1) % n];
 
-        threads.push(run_amp(Vec::from(program), phase, rx.clone(), sx.clone()));
+        threads.push(run_amp(
+            Vec::from(program),
+            phase,
+            Arc::clone(&rx),
+            Arc::clone(&sx),
+        ));
     }
 
     for t in threads {
@@ -108,6 +117,7 @@ fn thruster_signal_2(program: &[i64], phase_settings: &[i64]) -> i64 {
     }
 
     // Get the final output value, from the last amp.
+    // (The value was "sent to" the first amp, so it's chans[0].)
     let (_, rx) = &chans[0];
     #[allow(clippy::let_and_return)]
     let val = rx.lock().unwrap().recv().unwrap();
@@ -119,23 +129,22 @@ fn run_amp(
     phase: i64,
     input: Arc<Mutex<Receiver<i64>>>,
     output: Arc<Mutex<Sender<i64>>>,
-) -> JoinHandle<()> {
+) -> JoinHandle<i64> {
     let mut first_input = true;
 
-    thread::spawn(move || {
-        CPU::new(mem)
-            .input(move || {
-                if first_input {
-                    // First input is the phase setting.
-                    first_input = false;
-                    phase
-                } else {
-                    input.lock().unwrap().recv().unwrap()
-                }
-            })
-            .output(move |x| {
-                output.lock().unwrap().send(x).unwrap();
-            })
-            .run();
-    })
+    CPUBuilder::new(mem)
+        .input(move || {
+            if first_input {
+                // First input is the phase setting.
+                first_input = false;
+                phase
+            } else {
+                input.lock().unwrap().recv().unwrap()
+            }
+        })
+        .output(move |x| {
+            output.lock().unwrap().send(x).unwrap();
+        })
+        .finish()
+        .run_async()
 }
