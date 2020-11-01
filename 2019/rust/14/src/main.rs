@@ -29,35 +29,37 @@ fn fuel_produced(graph: &Graph, ore_available: u64) -> u64 {
     //
     // Also, if we make `upper` too large, we get overflows in `ore_needed`, so this is actually
     // quite fragile.
-    let upper = 2u64.pow(40);
+    let fuel_upper_bound = 2u64.pow(40);
 
-    match binary_search(0, upper, ore_available, |fuel| ore_needed(&graph, fuel)) {
+    let target = ore_available;
+    let key = |fuel| ore_needed(&graph, fuel);
+
+    match binary_search(0, fuel_upper_bound, target, key) {
         Ok(fuel) => fuel,
-        Err(fuel) => fuel,
+        Err(fuel) => fuel - 1,
     }
 }
 
-/// Binary search in the range `lower..upper` to find x such that key(x) == target.
+/// Binary search in the range `lower..upper` to find `x` such that `key(x) == target`.
 ///
-/// key must be a non-decreasing function on the range lower..upper.
+/// `key` must be a non-decreasing function on the range `lower..upper`.
 ///
-/// If no such x is found, return an `Err` with the greatest lower bound.
-/// I.e. return some y such that `key(y) < target < key(y+1)`.
+/// If no such `x` is found, return an `Err` with the least upper bound. I.e., return some `y` such
+/// that `key(y-1) < target < key(y)`.
 fn binary_search<F>(lower: u64, upper: u64, target: u64, key: F) -> Result<u64, u64>
 where
     F: Fn(u64) -> u64,
 {
-    use Ordering::*;
-
     if lower >= upper {
-        return Err(lower - 1);
+        return Err(upper);
     }
 
     let mid = (lower + upper) / 2;
 
-    match key(mid).cmp(&target) {
-        Less => binary_search(mid + 1, upper, target, key),
-        Greater => binary_search(lower, mid, target, key),
+    use Ordering::*;
+    match target.cmp(&key(mid)) {
+        Less => binary_search(lower, mid, target, key),
+        Greater => binary_search(mid + 1, upper, target, key),
         Equal => Ok(mid),
     }
 }
