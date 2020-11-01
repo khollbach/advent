@@ -180,6 +180,11 @@ mod tests {
     fn part1() {
         let graph = read_graph(input!("../tests/input"));
         assert_eq!(143173, ore_needed(&graph, 1));
+    }
+
+    #[test]
+    fn part2() {
+        let graph = read_graph(input!("../tests/input"));
         assert_eq!(8845261, fuel_produced(&graph, TRILLION));
     }
 

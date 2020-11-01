@@ -133,3 +133,18 @@ fn shortest_path_len(grid: &Grid) -> Option<u32> {
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cpu::input_mem;
+
+    #[test]
+    fn part1() {
+        let mem = input_mem!("../tests/input");
+        let grid = explore_grid(mem);
+
+        let shortest = shortest_path_len(&grid).unwrap();
+        assert_eq!(234, shortest);
+    }
+}

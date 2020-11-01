@@ -228,18 +228,17 @@ impl fmt::Debug for Tile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::input;
-    use cpu::parse_mem;
+    use cpu::input_mem;
 
     #[test]
     fn part1() {
-        let mem = parse_mem(input!("../tests/input")).unwrap();
+        let mem = input_mem!("../tests/input");
         assert_eq!(296, num_blocks(mem));
     }
 
     #[test]
     fn part2() {
-        let mem = parse_mem(input!("../tests/input")).unwrap();
+        let mem = input_mem!("../tests/input");
         assert_eq!(13824, final_score(mem));
     }
 }

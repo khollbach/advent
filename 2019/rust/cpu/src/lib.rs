@@ -10,10 +10,10 @@ use std::thread::JoinHandle;
 mod builder;
 mod instruction;
 mod memory;
-mod misc;
+mod read_mem;
 
 pub use builder::CPUBuilder;
-pub use misc::{parse_mem, read_mem};
+pub use read_mem::{get_line, input, parse_mem, read_mem};
 
 /// A computer emulator that can run Intcode programs.
 ///
