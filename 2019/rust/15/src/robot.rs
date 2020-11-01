@@ -1,4 +1,4 @@
-use crate::{Dir, Point, Tile, ORIGIN};
+use crate::types::{Dir, Point, Tile, ORIGIN};
 use cpu::CPUBuilder;
 use std::sync::mpsc::{self, Receiver, RecvError, SendError, Sender};
 

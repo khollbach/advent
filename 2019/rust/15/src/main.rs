@@ -1,89 +1,45 @@
 use cpu::read_mem;
 use robot::Robot;
 use std::collections::{HashMap, HashSet, VecDeque};
+use types::{Dir, Grid, Point, Tile, NESW, ORIGIN};
 
 mod robot;
+mod types;
 
 fn main() {
     let mem = read_mem().unwrap();
 
-    let grid = explore_grid(mem);
+    let (grid, target) = explore_grid(mem);
+
     let shortest = shortest_path_len(&grid).unwrap();
-
     println!("{}", shortest);
+
+    let farthest = greatest_distance(&grid, target);
+    println!("{}", farthest);
 }
 
-type Grid = HashMap<Point, Tile>;
-
-/// (0, 0) is the robot's starting point; everything else is relative to that.
+/// DFS to map the entire enclosure using the robot. There must be exactly one reachable target.
+/// Returns the grid and the target.
 ///
-/// If the point is (x, y), then N/S is +y/-y and E/W is +x/-x.
-type Point = (i32, i32);
-
-const ORIGIN: Point = (0, 0);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Tile {
-    Wall,
-    Floor,
-
-    /// Location of the oxygen system.
-    Target,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Dir {
-    N,
-    E,
-    S,
-    W,
-}
-
-const NESW: [Dir; 4] = [Dir::N, Dir::E, Dir::S, Dir::W];
-
-impl Dir {
-    /// Negate this direction.
-    fn opposite(self) -> Self {
-        use Dir::*;
-        match self {
-            N => S,
-            S => N,
-            E => W,
-            W => E,
-        }
-    }
-
-    /// Take one step in this direction.
-    fn step((x, y): Point, d: Dir) -> Point {
-        use Dir::*;
-        match d {
-            N => (x, y + 1),
-            E => (x + 1, y),
-            S => (x, y - 1),
-            W => (x - 1, y),
-        }
-    }
-}
-
-/// DFS to map the entire enclosure using the robot.
-///
-/// Could run infinitely if the enclosure is infinite. In that case,
-/// we would want to implement an interative-deepening DFS instead.
-fn explore_grid(mem: Vec<i64>) -> Grid {
-    /// Visit the tile the robot is currently standing on, and recursively visit all neighbors.
-    ///
-    /// After visiting each neighbor, move the robot back to the current position.
-    ///
-    /// `grid` records the tiles have been visited.
-    fn dfs(robot: &mut Robot, grid: &mut Grid) {
-        // "Visit" the current tile.
+/// Could run infinitely if the enclosure is infinite. In that case, we would want to implement an
+/// interative-deepening DFS instead.
+fn explore_grid(mem: Vec<i64>) -> (Grid, Point) {
+    // Explore the tile the robot is currently standing on, and recursively explore all neighbors.
+    //
+    // After visiting a neighbor, move the robot back to the current position.
+    fn dfs(robot: &mut Robot, grid: &mut Grid, target: &mut Option<Point>) {
         grid.insert(robot.pos, robot.tile);
+
+        if robot.tile == Tile::Target {
+            assert!(target.is_none(), "Two targets; this can't be right.");
+            *target = Some(robot.pos);
+        }
 
         for &dir in &NESW {
             let new_pos = Dir::step(robot.pos, dir);
             if !grid.contains_key(&new_pos) {
                 if robot.move_(dir) {
-                    dfs(robot, grid);
+                    dfs(robot, grid, target);
 
                     // Move back after visiting that part of the map!
                     robot.move_(dir.opposite());
@@ -96,21 +52,22 @@ fn explore_grid(mem: Vec<i64>) -> Grid {
     }
 
     let mut robot = Robot::new(mem);
-
     let mut grid = HashMap::new();
-    dfs(&mut robot, &mut grid);
-    grid
+    let mut target = None;
+
+    dfs(&mut robot, &mut grid, &mut target);
+
+    (grid, target.expect("No target; this can't be right."))
 }
 
 /// Use a BFS to find the shortest path from the origin to the target.
 ///
-/// Requires that grid is enclosed in `Wall` tiles, otherwise this may
-/// panic when accesses tiles that do not exist at the edges of the grid.
+/// Requires that grid is enclosed in `Wall` tiles, otherwise this may panic when accessing tiles
+/// that do not exist at the edges of the grid.
 ///
 /// If no path exists after exhausting the search space, return None.
 fn shortest_path_len(grid: &Grid) -> Option<u32> {
     let mut seen = HashSet::new();
-
     let mut queue = VecDeque::new();
     queue.push_back((ORIGIN, 0));
 
@@ -134,6 +91,36 @@ fn shortest_path_len(grid: &Grid) -> Option<u32> {
     None
 }
 
+/// Use a BFS to find the longest distance from the source to any reachable tile.
+///
+/// The "distance" between two tiles is specifically the shortest path between them.
+///
+/// Requires that grid is enclosed in `Wall` tiles, otherwise this may panic when accessing tiles
+/// that do not exist at the edges of the grid.
+fn greatest_distance(grid: &Grid, source: Point) -> u32 {
+    let mut seen = HashSet::new();
+    let mut queue = VecDeque::new();
+    queue.push_back((source, 0));
+
+    let mut longest = 0;
+
+    while let Some((p, dist)) = queue.pop_front() {
+        seen.insert(p);
+
+        longest = dist;
+
+        // Enqueue p's neighbors (except walls).
+        for &dir in &NESW {
+            let other = Dir::step(p, dir);
+            if grid[&other] != Tile::Wall && !seen.contains(&other) {
+                queue.push_back((other, dist + 1));
+            }
+        }
+    }
+
+    longest
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -142,9 +129,18 @@ mod tests {
     #[test]
     fn part1() {
         let mem = input_mem!("../tests/input");
-        let grid = explore_grid(mem);
+        let (grid, _) = explore_grid(mem);
 
         let shortest = shortest_path_len(&grid).unwrap();
         assert_eq!(234, shortest);
+    }
+
+    #[test]
+    fn part2() {
+        let mem = input_mem!("../tests/input");
+        let (grid, target) = explore_grid(mem);
+
+        let farthest = greatest_distance(&grid, target);
+        assert_eq!(292, farthest);
     }
 }
